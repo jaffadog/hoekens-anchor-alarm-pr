@@ -16,3 +16,4 @@
 * add hotline to differentiate old vs new path: https://github.com/iosphere/Leaflet.hotline
 * add line and distance to anchor to UI.
 * added bearing to anchor to UI.
+* added wind speed / angle

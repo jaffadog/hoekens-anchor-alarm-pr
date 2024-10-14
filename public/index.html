@@ -27,12 +27,15 @@
       </div>
       <div id='radiusControl'>
         <button id='decreaseRadius'> - </button>&nbsp;
-        <button id='setRadius'><span id='radiusValue'>0</span>/<span id='radius'>0</span>m</button>&nbsp;
+        <button id='setRadius'><span id='radius'>0</span>m</button>&nbsp;
         <button id='increaseRadius'> + </button>
       </div>
     </div>
-    <div id="info">
-      <button id='setRadius'>Depth: <span id='depthValue'>0</span>m</button>
+    <div class="info leaflet-bottom leaflet-left">
+      <button id='aws'>Wind: <span id='awsValue'>~</span> / <span id='awaValue'>~</span></button>
+    </div>
+    <div class="info leaflet-bottom leaflet-right">
+      <button id='depth'>Depth: <span id='depthValue'>~</span></button>
     </div>
     <script>
 
@@ -102,14 +105,28 @@
           updateAnchorLine(currentCoordinates, anchorCoordinates);
         });
 
-        $.get('/signalk/v1/api/vessels/self/navigation/anchor/currentRadius/value', (radius) => {
-          radius = Math.round(radius * 10) / 10;
-          $('#radiusValue').html(radius);
-        });
         $.get('/signalk/v1/api/vessels/self/environment/depth/belowTransducer/value', (depth) => {
-          $('#depthValue').html(depth);
+          depth = Math.round(depth * 10) / 10;
+          $('#depthValue').html(`${depth}m`);
         }).fail(() => {
           $('#depthValue').html("~");
+        });
+
+        $.get('http://boatpi.local/signalk/v1/api/vessels/self/environment/wind/speedApparent/value', (speedApparent) => {
+          let kts = Math.round(speedApparent * 1.94384 * 10) / 10;
+          $('#awsValue').html(`${kts}kts`);
+        }).fail(() => {
+          $('#awsValue').html("~");
+        });
+
+        $.get('http://boatpi.local/signalk/v1/api/vessels/self/environment/wind/directionTrue/value', (directionTrue) => {
+          let angle = Math.round(rad2deg(directionTrue));
+          console.log(angle);
+          if (angle < 0)
+            angle = 360 - angle;
+          $('#awaValue').html(`${angle}°`);
+        }).fail(() => {
+          $('#awaValue').html("~");
         });
 
         $.get('/signalk/v1/api/vessels', (vessels) => {
@@ -192,7 +209,6 @@
           let anchorPosition = data.anchor.position.value;
           let anchorCoord = L.latLng(anchorPosition.latitude, anchorPosition.longitude);
           let radius = parseInt(data.anchor.maxRadius.value);
-          $('#radiusValue').html(Math.round(data.anchor.currentRadius.value * 10) / 10)
           dropAnchor(anchorCoord, radius);
         } else {
           //show our potential anchor spot.
@@ -422,7 +438,7 @@
         anchorLineAngle.setText("");
         anchorLineAngle.setText(`${bearing}°`, {
           orientation: flip ? 'flip' : 0,
-          offset: -2,
+          offset: -3,
           center: true,
           attributes: {
             class: "anchorLineLabel"
