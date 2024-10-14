@@ -1,375 +1,419 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Hoeken's Anchor Alarm</title>
-    <link rel="stylesheet" href="style.css"/>
-    <link rel="stylesheet" href="leaflet/leaflet.css"/>
-    <script src="jquery-3.7.1.min.js"></script>
-    <script src="leaflet/leaflet.js"></script>
-    <script src="leaflet/leaflet.rotatedMarker.js"></script>
-    <script src="leaflet/leaflet.hotline.js"></script>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hoeken's Anchor Alarm</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="leaflet/leaflet.css" />
+  <script src="jquery-3.7.1.min.js"></script>
+  <script src="leaflet/leaflet.js"></script>
+  <script src="leaflet/leaflet.rotatedMarker.js"></script>
+  <script src="leaflet/leaflet.hotline.js"></script>
 </head>
+
 <body>
-<div id="map_container">
-  <div id="map"></div>
-  <div id="map_toggle">
-    <div id='anchorDown'>
-      <button id='raiseAnchor'>Raise Anchor</button>
+  <div id="map_container">
+    <div id="map"></div>
+    <div id="map_toggle">
+      <div id='anchorDown'>
+        <button id='raiseAnchor'>Raise Anchor</button>
+      </div>
+      <div id='anchorUp'>
+        <button id='dropAnchor'>Drop Anchor</button><br />
+      </div>
+      <div id='radiusControl'>
+        <button id='decreaseRadius'> - </button>&nbsp;
+        <button id='setRadius'><span id='radiusValue'>0</span>/<span id='radius'>0</span>m</button>&nbsp;
+        <button id='increaseRadius'> + </button>
+      </div>
     </div>
-    <div id='anchorUp'>
-      <button id='dropAnchor'>Drop Anchor</button><br/>
+    <div id="info">
+      <button id='setRadius'>Depth: <span id='depthValue'>0</span>m</button>
     </div>
-    <div id='radiusControl'>
-      <button id='decreaseRadius'> - </button>&nbsp;
-      <button id='setRadius'><span id='radiusValue'>0</span>/<span id='radius'>0</span>m</button>&nbsp;
-      <button id='increaseRadius'> + </button>
-    </div>
-  </div>
-  <div id="info">
-    <button id='setRadius'>Depth: <span id='depthValue'>0</span>m</button>
- </div>
-<script>
-  var boat;
-  var crosshair;
-  var anchor;
-  var anchorRadius;
-  var mmsi;
-  var maxRadius = 50;
-  var latitude;
-  var longitude;
-  var target = {};
-  var isAnchored = false;
-    
-  var positionHistory = [];
-  var historyLine;
+    <script>
 
-  var map = L.map('map').setView([-17.8414, 177.1827], 5);
-  var boatIcon = L.icon({
-    iconUrl: 'boat.png',
-    iconSize:     [24, 48], // size of the icon
-    iconAnchor:   [24, 24], // point of the icon which will correspond to marker's location
-  });
-  var anchorIcon = L.icon({
-    iconUrl: 'anchor.png',
-    iconSize:     [24, 24], // size of the icon
-    iconAnchor:   [12, 12], // point of the icon which will correspond to marker's location
-  });
-  var targetIcon = L.icon({
-    iconUrl: 'target.png',
-    iconSize:     [12, 12], // size of the icon
-    iconAnchor:   [6, 6], // point of the icon which will correspond to marker's location
-  });
+      let currentCoordinates;
+      let anchorCoordinates;
 
-  var crosshairIcon = L.icon({
-    iconUrl: 'crosshair.png',
-    iconSize:     [24, 24], // size of the icon
-    iconAnchor:   [12, 12], // point of the icon which will correspond to marker's location
-  });
+      let boat;
+      let crosshair;
+      let anchor;
+      let anchorRadius;
+      let mmsi;
+      let maxRadius = 50;
+      let latitude;
+      let longitude;
+      let target = {};
+      let isAnchored = false;
 
-  var urlParams = new URLSearchParams(window.location.search);
-
-  setInterval( () => {
-    $.get('/signalk/v1/api/vessels/self/navigation', (data) => {
-      latitude = data.position.value.latitude;
-      longitude = data.position.value.longitude;
-      let heading = data.headingTrue?.value;
-      if (heading) {
-        heading = heading *  57.295779513; // Convert to degrees
-      } else {
-        heading = 0;
-      }
-      let latlng = L.latLng(latitude, longitude);
-      boat.setLatLng(latlng); 
-      boat.setRotationAngle(heading);
-      
-      if (historyLine)
-        historyLine.addLatLng([latitude, longitude, historyLine.length]);
-    });
-
-    $.get('/signalk/v1/api/vessels/self/navigation/anchor/currentRadius/value', (radius) => {
-      radius = Math.round(radius*10)/10;
-      $('#radiusValue').html(radius);
-    });
-    $.get('/signalk/v1/api/vessels/self/environment/depth/belowTransducer/value', (depth) => {
-      $('#depthValue').html(depth);
-    }).fail(() => {
-      $('#depthValue').html("~");
-    });
-
-    $.get('/signalk/v1/api/vessels', (vessels) => {
-      let detectedTargets = [];
-      for (let key in vessels) {
-	let vessel=vessels[key];
-	if (vessel.mmsi == mmsi) {
-	  continue;
-	}
-	if (!("navigation" in vessel) || !("position" in vessel.navigation)) {
-	  continue;
-	}
-	let position = vessel.navigation.position.value;
-	let distance = calculateDistance(position.latitude, position.longitude, latitude, longitude);
-	if (distance <= maxRadius * 5) {
-	  detectedTargets.push(vessel.mmsi);
-	  distance = Math.round(distance*10)/10;
-	  if (vessel.mmsi in target) {
-	    target[vessel.mmsi].setLatLng([position.latitude, position.longitude]);
-   	    target[vessel.mmsi]._popup.setContent(`${vessel.name} at ${distance} meters`);
-	  } else {
-            target[vessel.mmsi] = L.marker([position.latitude, position.longitude], {
-              icon: targetIcon
-	    });
-	    target[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
-	  }
-	}
-      }
-      for (let mmsi in target) {
- 	if (!detectedTargets.includes(mmsi)) {
-	  console.log(`${mmsi} moved out of range`);
-	  map.removeLayer(target[mmsi]);
-	  delete target[mmsi];
-        }
-      }
-    });
-  }, 1500);
-
-  $.get('/signalk/v1/api/vessels/self', (data) => {
-      mmsi = data.mmsi;
-
-      //our radius defaults.
-      if (data.environment.depth.belowTransducer.value)
-        maxRadius = Math.round(parseInt(data.environment.depth.belowTransducer.value)*5);
-      else
-        maxRadius = 50;
-      
-      data = data.navigation;
-      latitude = data.position.value.latitude;
-      longitude = data.position.value.longitude;
-      let heading = data.headingTrue?.value;
-      if (heading) {
-        heading = heading *  57.295779513; // Convert to degrees
-      } else {
-        heading = 0;
-      }
-      let latlng = L.latLng(latitude, longitude);
-      zoom = 19;
-      if (urlParams.has('zoom')) {
-        zoom = urlParams.get('zoom');
-      }
-      map.setView(latlng, zoom);
-      boat = L.marker(latlng, {
-          rotationAngle: heading,
-          icon: boatIcon
-      }).addTo(map)
-      
-      crosshair = L.marker(latlng, {
-          icon: crosshairIcon
+      let map = L.map('map', {
+      }).setView([-17.8414, 177.1827], 5);
+      let boatIcon = L.icon({
+        iconUrl: 'boat.png',
+        iconSize: [24, 48], // size of the icon
+        iconAnchor: [12, 24], // point of the icon which will correspond to marker's location
+      });
+      let anchorIcon = L.icon({
+        iconUrl: 'anchor.png',
+        iconSize: [24, 24], // size of the icon
+        iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
+      });
+      let targetIcon = L.icon({
+        iconUrl: 'target.png',
+        iconSize: [12, 12], // size of the icon
+        iconAnchor: [6, 6], // point of the icon which will correspond to marker's location
       });
 
-      anchorRadius = L.circle(map.getCenter(), maxRadius, {color:'green'});
-      uiSetRadius(maxRadius)
-
-      if ((data.anchor) && (data.anchor.position) && (data.anchor.position.value)) {
-        let anchorPosition = data.anchor.position.value;	
-        let anchorCoord = L.latLng(anchorPosition.latitude, anchorPosition.longitude);
-        let radius = parseInt(data.anchor.maxRadius.value);
-        $('#radiusValue').html(Math.round(data.anchor.currentRadius.value*10)/10)
-        dropAnchor(anchorCoord, radius);
-      } else {
-        //show our potential anchor spot.
-        crosshair = L.marker(latlng, {
-            icon: crosshairIcon
-        }).addTo(map)
-
-	      $('#anchorUp').show();
-      }
-      
-      anchorRadius.addTo(map)
-
-      map.on('move', function(ev) {
-        if (!isAnchored) {
-          crosshair.setLatLng(map.getCenter());
-          anchorRadius.setLatLng(map.getCenter());
-          uiSetRadiusColor()
-        }
+      let crosshairIcon = L.icon({
+        iconUrl: 'crosshair.png',
+        iconSize: [24, 24], // size of the icon
+        iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
       });
-      
-      $.get(`/signalk/v1/api/vessels/urn:mrn:imo:mmsi:${mmsi}/track`, (data) => {
-        if (data.coordinates[0].length) {
-          positionHistory = data.coordinates[0];
-          
-          let points = [];
-          let i=0;
-          for (let position of positionHistory) {
-            points.push([position[1], position[0], i]);
-            i++;
+
+      let historyLine;
+      let anchorLine;
+      let anchorLineTooltip;
+
+      let urlParams = new URLSearchParams(window.location.search);
+
+      setInterval(() => {
+        $.get('/signalk/v1/api/vessels/self/navigation', (data) => {
+          latitude = data.position.value.latitude;
+          longitude = data.position.value.longitude;
+          let heading = data.headingTrue?.value;
+          if (heading) {
+            heading = heading * 57.295779513; // Convert to degrees
+          } else {
+            heading = 0;
           }
 
-          historyLine = L.hotline(points, {
-            color: 'red',
-            weight: 1,
-            min: 0,
-            max: points.length,
-            palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
-            outlineWidth: 0,
-          }).addTo(map);
+          currentCoordinates = L.latLng(latitude, longitude);
+
+          boat.setLatLng(currentCoordinates);
+          boat.setRotationAngle(heading);
+
+          if (historyLine)
+            historyLine.addLatLng([latitude, longitude, 0]);
+
+          updateAnchorLine(currentCoordinates, anchorCoordinates);
+        });
+
+        $.get('/signalk/v1/api/vessels/self/navigation/anchor/currentRadius/value', (radius) => {
+          radius = Math.round(radius * 10) / 10;
+          $('#radiusValue').html(radius);
+        });
+        $.get('/signalk/v1/api/vessels/self/environment/depth/belowTransducer/value', (depth) => {
+          $('#depthValue').html(depth);
+        }).fail(() => {
+          $('#depthValue').html("~");
+        });
+
+        $.get('/signalk/v1/api/vessels', (vessels) => {
+          let detectedTargets = [];
+          for (let key in vessels) {
+            let vessel = vessels[key];
+            if (vessel.mmsi == mmsi) {
+              continue;
+            }
+            if (!("navigation" in vessel) || !("position" in vessel.navigation)) {
+              continue;
+            }
+            let position = vessel.navigation.position.value;
+            let distance = calculateDistance(position.latitude, position.longitude, latitude, longitude);
+            if (distance <= maxRadius * 5) {
+              detectedTargets.push(vessel.mmsi);
+              distance = Math.round(distance * 10) / 10;
+              if (vessel.mmsi in target) {
+                target[vessel.mmsi].setLatLng([position.latitude, position.longitude]);
+                target[vessel.mmsi]._popup.setContent(`${vessel.name} at ${distance} meters`);
+              } else {
+                target[vessel.mmsi] = L.marker([position.latitude, position.longitude], {
+                  icon: targetIcon
+                });
+                target[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
+              }
+            }
+          }
+          for (let mmsi in target) {
+            if (!detectedTargets.includes(mmsi)) {
+              console.log(`${mmsi} moved out of range`);
+              map.removeLayer(target[mmsi]);
+              delete target[mmsi];
+            }
+          }
+        });
+      }, 1500);
+
+      $.get('/signalk/v1/api/vessels/self', (data) => {
+        mmsi = data.mmsi;
+
+        //our radius defaults.
+        if (data.environment.depth.belowTransducer.value)
+          maxRadius = Math.round(parseInt(data.environment.depth.belowTransducer.value) * 5);
+        else
+          maxRadius = 50;
+
+        data = data.navigation;
+        latitude = data.position.value.latitude;
+        longitude = data.position.value.longitude;
+        let heading = data.headingTrue?.value;
+        if (heading) {
+          heading = heading * 57.295779513; // Convert to degrees
+        } else {
+          heading = 0;
         }
-      });
-  });
+        let latlng = L.latLng(latitude, longitude);
+        zoom = 19;
+        if (urlParams.has('zoom')) {
+          zoom = urlParams.get('zoom');
+        }
+        map.setView(latlng, zoom);
+        boat = L.marker(latlng, {
+          rotationAngle: heading,
+          icon: boatIcon
+        }).addTo(map)
 
-  satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      maxZoom: 20
-  });
-  //satelliteLayer.addTo(map);
+        currentCoordinates = latlng;
 
-  osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'Map data from OpenStreetMap (OSM)',
-      maxZoom: 20 
-  });
-  osmLayer.addTo(map);
+        crosshair = L.marker(latlng, {
+          icon: crosshairIcon
+        });
 
-  openSeaMapLayer = L.tileLayer('http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
-      attribution: 'Map data from OpenSeaMap',
-      maxZoom: 20
-  });
+        anchorRadius = L.circle(map.getCenter(), maxRadius, { color: 'green' });
+        uiSetRadius(maxRadius)
 
-  var baseMaps = {
-    "OpenStreetMap": osmLayer,
-    "Satellite": satelliteLayer
-  };
+        anchorCoordinates = map.getCenter();
 
-  var overlayMaps = {
-    "OpenSeaMaps": openSeaMapLayer,
-  };	
+        if ((data.anchor) && (data.anchor.position) && (data.anchor.position.value)) {
+          let anchorPosition = data.anchor.position.value;
+          let anchorCoord = L.latLng(anchorPosition.latitude, anchorPosition.longitude);
+          let radius = parseInt(data.anchor.maxRadius.value);
+          $('#radiusValue').html(Math.round(data.anchor.currentRadius.value * 10) / 10)
+          dropAnchor(anchorCoord, radius);
+        } else {
+          //show our potential anchor spot.
+          crosshair = L.marker(latlng, {
+            icon: crosshairIcon
+          }).addTo(map)
 
-  var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+          $('#anchorUp').show();
+        }
 
-  $('#raiseAnchor').click( () => {
-    let agree=confirm('Do you really want to disable your anchor alarm?');
-    if (agree) {
-      $.post('/plugins/hoekens-anchor-alarm/raiseAnchor', () => {
-        raiseAnchor();
-      });
-    }
-  });
+        anchorLineTooltip = L.tooltip(currentCoordinates, "foo");
+        anchorLine = L.polyline([currentCoordinates, anchorCoordinates], {
+          color: 'grey',
+          weight: 2
+        }).addTo(map);
+        anchorLine.bindTooltip(anchorLineTooltip);
+        anchorLineTooltip.showTooltip();
 
-  $('#dropAnchor').click(() => {
-    $.post('/plugins/hoekens-anchor-alarm/dropAnchor', () => {
-      let mc = map.getCenter()
-      let newPosition = {latitude: mc.lat, longitude: mc.lng};
-      $.post('/plugins/hoekens-anchor-alarm/setAnchorPosition', { position: newPosition}, () => {
-        $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: maxRadius }, () => {
-            dropAnchor(mc, maxRadius);
+        updateAnchorLine(currentCoordinates, anchorCoordinates);
+
+        anchorRadius.addTo(map)
+
+        map.on('move', function (ev) {
+          if (!isAnchored) {
+            anchorCoordinates = map.getCenter();
+            updateAnchorLine(currentCoordinates, anchorCoordinates);
+            crosshair.setLatLng(map.getCenter());
+            anchorRadius.setLatLng(map.getCenter());
+            uiSetRadiusColor();
+          }
+        });
+
+        $.get(`/signalk/v1/api/vessels/urn:mrn:imo:mmsi:${mmsi}/track`, (data) => {
+          if (data.coordinates[0].length) {
+            const history = data.coordinates[0];
+
+            let points = [];
+            let i = 0;
+            for (let position of history) {
+              points.push([position[1], position[0], i]);
+              i++;
+            }
+
+            historyLine = L.hotline(points, {
+              color: 'red',
+              weight: 1,
+              min: 0,
+              max: points.length,
+              palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
+              outlineWidth: 0,
+              text: ''
+            }).addTo(map);
+          }
         });
       });
-    }).fail((response) => {
-    	if (response.status == 401) {
-    	  location.href="/admin/#/login";
-    	}
-    });
-  });
 
-  $('#setRadius').click( () => {
-    let newRadius = parseInt(prompt('Enter Radius (m)', maxRadius))
-    if (newRadius <= 0)
-      return;
+      satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        maxZoom: 20
+      });
+      //satelliteLayer.addTo(map);
 
-    maxRadius = newRadius;
-    uiSetRadius(newRadius);
+      osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data from OpenStreetMap (OSM)',
+        maxZoom: 20
+      });
+      osmLayer.addTo(map);
 
-    if (isAnchored)
-      $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: newRadius });
-  });
+      openSeaMapLayer = L.tileLayer('http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+        attribution: 'Map data from OpenSeaMap',
+        maxZoom: 20
+      });
 
-  $('#increaseRadius').click( () => {
-    maxRadius = parseInt(maxRadius) + 5;
-    uiSetRadius(maxRadius);
-    if (isAnchored)
-      $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: maxRadius });
-  });
+      let baseMaps = {
+        "OpenStreetMap": osmLayer,
+        "Satellite": satelliteLayer
+      };
 
-  $('#decreaseRadius').click( () => {
-    maxRadius = parseInt(maxRadius);
-    if (maxRadius <= 5)
-       return;
-      
-    maxRadius = maxRadius - 5;
-    uiSetRadius(maxRadius)
-    if (isAnchored)
-      $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: maxRadius });
-  });
-  
-  function uiSetRadius(radius) {
-    $('#radius').html(radius);
-    anchorRadius.setRadius(radius);
-    uiSetRadiusColor()
-  }
-  
-  function uiSetRadiusColor() {
-    if (calculateDistance(anchorRadius.getLatLng().lat, anchorRadius.getLatLng().lng, boat.getLatLng().lat, boat.getLatLng().lng) > anchorRadius.getRadius())
-      anchorRadius.setStyle({'color': 'red'})
-    else if (isAnchored)
-      anchorRadius.setStyle({'color': 'blue'})
-    else
-      anchorRadius.setStyle({'color': 'green'})
-  }
+      let overlayMaps = {
+        "OpenSeaMaps": openSeaMapLayer,
+      };
 
-  function dropAnchor(position, radius) {
-    $('#anchorDown').show();
-    $('#anchorUp').hide();
+      let layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
 
-    isAnchored = true;
-    
-    maxRadius = parseInt(radius);
-    if (maxRadius <= 0)
-      maxRadius = 10;
+      $('#raiseAnchor').click(() => {
+        let agree = confirm('Do you really want to disable your anchor alarm?');
+        if (agree) {
+          $.post('/plugins/hoekens-anchor-alarm/raiseAnchor', () => {
+            raiseAnchor();
+          });
+        }
+      });
 
-    map.removeLayer(crosshair);
+      $('#dropAnchor').click(() => {
+        $.post('/plugins/hoekens-anchor-alarm/dropAnchor', () => {
+          let mc = map.getCenter()
+          let newPosition = { latitude: mc.lat, longitude: mc.lng };
+          $.post('/plugins/hoekens-anchor-alarm/setAnchorPosition', { position: newPosition }, () => {
+            $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: maxRadius }, () => {
+              dropAnchor(mc, maxRadius);
+            });
+          });
+        }).fail((response) => {
+          if (response.status == 401) {
+            location.href = "/admin/#/login";
+          }
+        });
+      });
 
-    uiSetRadius(maxRadius)
-    anchorRadius.setLatLng(position);
-    anchorRadius.setStyle({'color': 'blue'})
-    anchor = L.marker(position, {
-      icon: anchorIcon
-    }).addTo(map);
-  }
+      $('#setRadius').click(() => {
+        let newRadius = parseInt(prompt('Enter Radius (m)', maxRadius))
+        if (newRadius <= 0)
+          return;
 
-  function raiseAnchor() {
-    map.removeLayer(anchor);
+        maxRadius = newRadius;
+        uiSetRadius(newRadius);
 
-    anchorRadius.setLatLng(map.getCenter());
-    anchorRadius.setStyle({'color': 'green'})
+        if (isAnchored)
+          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: newRadius });
+      });
 
-    $('#anchorUp').show();
-    $('#anchorDown').hide();
+      $('#increaseRadius').click(() => {
+        maxRadius = parseInt(maxRadius) + 5;
+        uiSetRadius(maxRadius);
+        if (isAnchored)
+          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: maxRadius });
+      });
 
-    isAnchored = false;
+      $('#decreaseRadius').click(() => {
+        maxRadius = parseInt(maxRadius);
+        if (maxRadius <= 5)
+          return;
 
-    crosshair = L.marker(map.getCenter(), {
-        icon: crosshairIcon
-    }).addTo(map)
-  }
+        maxRadius = maxRadius - 5;
+        uiSetRadius(maxRadius)
+        if (isAnchored)
+          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: maxRadius });
+      });
 
-  function calculateDistance(lat1, lon1, lat2, lon2) {
-    var R = 6371000; // Radius of the earth in m
-    var dLat = deg2rad(lat2-lat1);  // deg2rad below
-    var dLon = deg2rad(lon2-lon1);
-    var a =
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-      Math.sin(dLon/2) * Math.sin(dLon/2)
-      ;
-    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    var d = R * c; // Distance in km
-    return d;
-  }
+      function uiSetRadius(radius) {
+        $('#radius').html(radius);
+        anchorRadius.setRadius(radius);
+        uiSetRadiusColor()
+      }
 
-  function deg2rad(deg) {
-    return deg * (Math.PI/180)
-  }
-</script>
+      function uiSetRadiusColor() {
+        if (calculateDistance(anchorRadius.getLatLng().lat, anchorRadius.getLatLng().lng, boat.getLatLng().lat, boat.getLatLng().lng) > anchorRadius.getRadius())
+          anchorRadius.setStyle({ 'color': 'red' })
+        else if (isAnchored)
+          anchorRadius.setStyle({ 'color': 'blue' })
+        else
+          anchorRadius.setStyle({ 'color': 'green' })
+      }
+
+      function dropAnchor(position, radius) {
+        $('#anchorDown').show();
+        $('#anchorUp').hide();
+
+        anchorCoordinates = position;
+
+        isAnchored = true;
+
+        maxRadius = parseInt(radius);
+        if (maxRadius <= 0)
+          maxRadius = 20;
+
+        map.removeLayer(crosshair);
+
+        uiSetRadius(maxRadius)
+        anchorRadius.setLatLng(position);
+        anchorRadius.setStyle({ 'color': 'blue' })
+        anchor = L.marker(position, {
+          icon: anchorIcon
+        }).addTo(map);
+      }
+
+      function raiseAnchor() {
+        map.removeLayer(anchor);
+
+        anchorRadius.setLatLng(map.getCenter());
+        anchorRadius.setStyle({ 'color': 'green' })
+
+        $('#anchorUp').show();
+        $('#anchorDown').hide();
+
+        isAnchored = false;
+
+        crosshair = L.marker(map.getCenter(), {
+          icon: crosshairIcon
+        }).addTo(map)
+
+        anchorCoordinates = map.getCenter();
+        updateAnchorLine(currentCoordinates, anchorCoordinates);
+      }
+
+      function updateAnchorLine(current, anchor) {
+        anchorLine.setLatLngs([current, anchor]);
+        let distance = calculateDistance(current.lat, current.lng, anchor.lat, anchor.lng);
+
+        anchorLineTooltip.setContent(Math.round(distance * 10) / 10 + 'm');
+        // anchorLine.bindTooltip(anchorLineTooltip);
+        // anchorLineTooltip.openTooltip();
+      }
+
+      function calculateDistance(lat1, lon1, lat2, lon2) {
+        let R = 6371000; // Radius of the earth in m
+        let dLat = deg2rad(lat2 - lat1);  // deg2rad below
+        let dLon = deg2rad(lon2 - lon1);
+        let a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2)
+          ;
+        let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        let d = R * c; // Distance in km
+        return d;
+      }
+
+      function deg2rad(deg) {
+        return deg * (Math.PI / 180)
+      }
+    </script>
 </body>
+
 </html>
