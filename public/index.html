@@ -42,6 +42,8 @@
       let currentCoordinates;
       let anchorCoordinates;
 
+      let filterRadius = 500;
+
       let boat;
       let crosshair;
       let anchor;
@@ -121,7 +123,6 @@
 
         $.get('http://boatpi.local/signalk/v1/api/vessels/self/environment/wind/directionTrue/value', (directionTrue) => {
           let angle = Math.round(rad2deg(directionTrue));
-          console.log(angle);
           if (angle < 0)
             angle = 360 - angle;
           $('#awaValue').html(`${angle}°`);
@@ -250,8 +251,14 @@
             let points = [];
             let i = 0;
             for (let position of history) {
-              points.push([position[1], position[0], i]);
-              i++;
+              let lat = position[1];
+              let lon = position[0];
+              let distance = calculateDistance(currentCoordinates.lat, currentCoordinates.lng, lat, lon);
+
+              if (distance < filterRadius) {
+                points.push([lat, lon, i]);
+                i++;
+              }
             }
 
             historyLine = L.hotline(points, {

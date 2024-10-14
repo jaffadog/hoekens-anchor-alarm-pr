@@ -1,8 +1,8 @@
 # TODO: 
 
-* filter out any history more than 1km from current position
-* also show other vessels and their path history within 1km.
+* also show other vessels and their path history within filterRadius.
 * add check to propulsion.* before calling calling alarm.
+
 * remove / cleanup extra stuff in the module
   * rodeLength
   * manual setting

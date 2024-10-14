@@ -1,61 +1,27 @@
-# signalk-anchoralarm-plugin
+# hoekens-anchor-alarm
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/sbender9/signalk-anchoralarm-plugin.svg)](https://greenkeeper.io/)
+This is a fork of the venerable https://github.com/sbender9/signalk-anchoralarm-plugin by Scott Bender.
 
-SignalK Node Server Anchor Alarm Plugin
+I wanted a simple, web-only anchor alarm with my own personal UI style and some features that may be controversial, like automatic alarm cancelling if your engines are running.  If you want to use an external app or API, you are probably better off using the old plugin.
 
-Then use WilhelmSK to set the alarm (https://itunes.apple.com/us/app/wilhelmsk/id1150499484?mt=8)
+Some of the changes I've made:
 
-If not using WilhelmSK, you can setup the alarm using the WebApp or the REST API.
-
-## Web App
-
-Point your Web Browser to http://[signalk-server-ip-address]:[port-number]/signalk-anchoralarm-plugin/
-
-If you wish to have the satellite or openseamaps view enabled by default add the following
-
-| OpenStreetMap | Satellite | OpenSeaMap | Url String |
-| ------------- | --------- | ---------- | -----------|
-| X | - | - | / |
-| X | - | X | /?openseamap |
-| - | X | - | /?satellite |
-| - | X | X | /?satellite&openseamap |
-
-Note that you must be logged in to SignalK UI for this to work.
-
-When a depth transducer is configured the plugin will default to an anchor alarm of Dx5. If no depth transducer can be found the web app will prompt for the anchor alarm radius when the anchor is droped.
-
-## REST API
-
-### When you drop the anchor in the water, Call dropAnchor:
+* Kept the old style UI with anchor placed at map center.
+* Added historical tracks from the https://github.com/SignalK/tracks via the.
+  * I recommend setting this to a resolution of 1000ms and 86400 points to keep.  This gives you high resolution data for the last 24 hours.  You've got plenty of memory, so might as well use it.
+* Added colors to the historical tracks.  Green = new, fading to Red = old.
+* Added a line to show distance and bearing to anchor.
+* Added wind speed / angle
+* Removed distance to anchor from anchor radius UI
+* Added a check to prevent anchor alarm from firing when propulsion.*.rpm is > 0
+  * I always forget to turn the anchor alarm off and it always goes off when I'm leaving the anchorage.
+  * If you're truly dragging and you have your motor(s) on, then you know about it and you don't need another annoyance when you're dealing with it.
 
 
-```
-curl -X POST -H "Content-Type: application/json" -d '{}' http://localhost:3000/plugins/anchoralarm/dropAnchor
-```
+# Web App
 
-### After you have let the anchor rode out, call setRadius. This will calculate and set the alarm radius.
+Point your Web Browser to http://[signalk-server-ip-address]:[port-number]/hoekens-anchor-alarm/
 
-```
-curl -X POST -H "Content-Type: application/json" -d '{}' http://localhost:3000/plugins/anchoralarm/setRadius
-```
+# Attribution
 
-### You can adjust the radius (in meters) via:
-
-```
-curl -X POST -H "Content-Type: application/json" -d '{"radius": 30}' http://localhost:3000/plugins/anchoralarm/setRadius
-```
-
-### When you raise the anchor, call raiseAnchor.
-
-```
-curl -X POST -H "Content-Type: application/json" -d '{}' http://localhost:3000/plugins/anchoralarm/raiseAnchor
-```
-
-### If you need to set the anchor position after you have already let the rode out, it can esitmate the andchor position based on heading, depth and rode length. If "anchorDepth" is left out, then the current depthFromSurface will be used if available.
-
-```
-curl -X POST -H "Content-Type: application/json" -d '{"anchorDepth": 3, "rodeLength":30}' http://localhost:3000/plugins/anchoralarm/setManualAnchor
-```
-
-
+<a href="https://www.flaticon.com/free-icons/anchor" title="anchor icons">Anchor icons created by Freepik - Flaticon</a>
