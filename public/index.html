@@ -76,6 +76,7 @@
 
       let historyLine;
       let anchorLine;
+      let anchorLineAngle;
 
       let urlParams = new URLSearchParams(window.location.search);
 
@@ -96,7 +97,7 @@
           boat.setRotationAngle(heading);
 
           if (historyLine)
-            historyLine.addLatLng([latitude, longitude, 0]);
+            historyLine.addLatLng([latitude, longitude, historyLine.getLatLngs().length]);
 
           updateAnchorLine(currentCoordinates, anchorCoordinates);
         });
@@ -207,6 +208,11 @@
           weight: 2
         }).addTo(map);
 
+        anchorLineAngle = L.polyline([currentCoordinates, anchorCoordinates], {
+          color: 'grey',
+          weight: 0
+        }).addTo(map);
+
         updateAnchorLine(currentCoordinates, anchorCoordinates);
 
         anchorRadius.addTo(map)
@@ -279,7 +285,6 @@
           raiseAnchor(); //better UI response outside.
           $.post('/plugins/hoekens-anchor-alarm/raiseAnchor', () => { }).fail((response) => {
             //TODO: add error checking in case that fails.
-
             if (response.status == 401) {
               location.href = "/admin/#/login";
             }
@@ -298,7 +303,6 @@
           });
         }).fail((response) => {
           //TODO: add error checking in case that fails.
-
           if (response.status == 401) {
             location.href = "/admin/#/login";
           }
@@ -375,7 +379,7 @@
       function raiseAnchor() {
         map.removeLayer(anchor);
 
-        anchorRadius.setLatLng(map.getCenter());
+        //anchorRadius.setLatLng(map.getCenter());
         anchorRadius.setStyle({ 'color': 'green' })
 
         $('#anchorUp').show();
@@ -393,25 +397,38 @@
 
       function updateAnchorLine(current, anchor) {
         anchorLine.setLatLngs([current, anchor]);
-        let distance = calculateDistance(current.lat, current.lng, anchor.lat, anchor.lng);
-
-        anchorLine.setText("");
+        anchorLineAngle.setLatLngs([current, anchor]); // this duplicate on is so we can have 2 text labels
 
         //this will fail if you're anchored exactly on the equator, lol.
-        let orientation = 0;
+        let flip = false;
         if (current.lng > anchor.lng)
-          orientation = "flip";
+          flip = true;
 
-        anchorLine.setText(Math.round(distance * 10) / 10 + 'm', {
-          orientation: orientation,
+        let distance = calculateDistance(current.lat, current.lng, anchor.lat, anchor.lng);
+        distance = Math.round(distance * 10) / 10;
+
+        anchorLine.setText("");
+        anchorLine.setText(`${distance}m`, {
+          orientation: flip ? 'flip' : 0,
           offset: 12,
           center: true,
           attributes: {
             class: "anchorLineLabel"
           }
         });
-        // anchorLine.bindTooltip(L.tooltip({ permanent: true })).openTooltip();
-        // anchorLine.getTooltip().setContent(Math.round(distance * 10) / 10 + 'm');
+
+        const bearing = Math.round(calculateBearing(current.lat, current.lng, anchor.lat, anchor.lng));
+
+        anchorLineAngle.setText("");
+        anchorLineAngle.setText(`${bearing}°`, {
+          orientation: flip ? 'flip' : 0,
+          offset: -2,
+          center: true,
+          attributes: {
+            class: "anchorLineLabel"
+          }
+        });
+
       }
 
       function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -430,6 +447,33 @@
 
       function deg2rad(deg) {
         return deg * (Math.PI / 180)
+      }
+
+      // Convert radians to degrees
+      function rad2deg(radians) {
+        return radians * 180 / Math.PI;
+      }
+
+      function calculateBearing(lat1, lon1, lat2, lon2) {
+        // Convert latitude and longitude from degrees to radians
+        var θa = deg2rad(lat1);
+        var θb = deg2rad(lat2);
+        var ΔL = deg2rad(lon2 - lon1);
+
+        // Calculate X and Y using the provided formulas
+        var X = Math.cos(θb) * Math.sin(ΔL);
+        var Y = Math.cos(θa) * Math.sin(θb) - Math.sin(θa) * Math.cos(θb) * Math.cos(ΔL);
+
+        // Calculate the initial bearing (β) in radians
+        var β = Math.atan2(X, Y);
+
+        // Convert the bearing from radians to degrees
+        var bearing = rad2deg(β);
+
+        // Normalize the bearing to be between 0° and 360°
+        bearing = (bearing + 360) % 360;
+
+        return bearing;
       }
     </script>
 </body>
