@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-const Bacon = require('baconjs');
-const _ = require('lodash')
-const path = require('path')
-const fs = require('fs')
+//const Bacon = require('baconjs');
+//const _ = require('lodash')
+//const path = require('path')
+//const fs = require('fs')
 const geolib = require('geolib')
 
-const subscribrPeriod = 1000
+const subscriberPeriod = 1000
 
 module.exports = function(app) {
   var plugin = {};
@@ -35,11 +35,8 @@ module.exports = function(app) {
   var positionAlarmSent
   var saveOptionsTimer
   
-  var positionHistory = []
-
   plugin.start = function(props) {
     configuration = props
-    positionHistory = []
     try {
       var isOn = configuration['on']
       var position = configuration['position']
@@ -220,11 +217,11 @@ module.exports = function(app) {
         subscribe: [
           {
             path: 'navigation.position',
-            period: subscribrPeriod
+            period: subscriberPeriod
           },
           {
             path: 'navigation.headingTrue',
-            period: subscribrPeriod
+            period: subscriberPeriod
           }
         ]
       },
@@ -251,12 +248,7 @@ module.exports = function(app) {
         }
 
         if ( position ) {
-          
-          //keep a 60 min history of positions.
-          positionHistory.push([position.latitude, position.longitude]);
-          while (positionHistory.length > 3600)
-            positionHistory.shift()
-          
+                    
           var state
           lastPositionTime = Date.now()
           lastPosition = position
@@ -446,16 +438,6 @@ module.exports = function(app) {
             message: "can't save config"
           })
         }
-      }
-    })
-
-    router.get("/positionHistory", (req, res) => {
-      try {
-        res.send(JSON.stringify(positionHistory))
-      } catch ( err ) {
-        app.error(err)
-        res.status(500)
-        res.send("can't load history")
       }
     })
 

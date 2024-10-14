@@ -94,7 +94,7 @@
   var longitude;
   var target = {};
   var isAnchored = false;
-  
+    
   var positionHistory = [];
   var historyLine;
 
@@ -120,6 +120,8 @@
     iconSize:     [24, 24], // size of the icon
     iconAnchor:   [12, 12], // point of the icon which will correspond to marker's location
   });
+
+  historyLine = L.polyline([], {color: 'red'}).addTo(map);
 
   var urlParams = new URLSearchParams(window.location.search);
 
@@ -248,11 +250,16 @@
         }
       });
       
-      $.get('/plugins/hoekens-anchor-alarm/positionHistory', (data) => {
-        jdata = JSON.parse(data)
-        if (jdata.length) {
-          positionHistory = jdata;
-          historyLine = L.polyline(positionHistory, {color: 'red'}).addTo(map);
+      $.get(`/signalk/v1/api/vessels/urn:mrn:imo:mmsi:${mmsi}/track`, (data) => {
+        if (data.coordinates[0].length) {
+          positionHistory = data.coordinates[0];
+          console.log(positionHistory);
+          
+          for (let position of positionHistory) {
+            console.log(position);
+            let latlng = L.latLng(position[1], position[0]);
+            historyLine.addLatLng(latlng);
+          }
         }
       });
   });
