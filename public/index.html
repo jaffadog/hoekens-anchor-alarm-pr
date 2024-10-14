@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="leaflet/leaflet.css"/>
     <script src="leaflet/leaflet.js"></script>
     <script src="leaflet/leaflet.rotatedMarker.js"></script>
+    <script src="leaflet/leaflet.hotline.js"></script>
     <style>
        body {
           padding: 0;
@@ -138,7 +139,7 @@
       boat.setRotationAngle(heading);
       
       if (historyLine)
-        historyLine.addLatLng(latlng)
+        historyLine.addLatLng([latitude, longitude, historyLine.length]);
     });
 
     $.get('/signalk/v1/api/vessels/self/navigation/anchor/currentRadius/value', (radius) => {
@@ -253,12 +254,19 @@
           positionHistory = data.coordinates[0];
           
           let points = [];
-          for (let position of positionHistory)
-            points.push([position[1], position[0]]);
+          let i=0;
+          for (let position of positionHistory) {
+            points.push([position[1], position[0], i]);
+            i++;
+          }
 
-          historyLine = L.polyline(points, {
+          historyLine = L.hotline(points, {
             color: 'red',
-            weight: 1
+            weight: 1,
+            min: 0,
+            max: points.length,
+            palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
+            outlineWidth: 0,
           }).addTo(map);
         }
       });
