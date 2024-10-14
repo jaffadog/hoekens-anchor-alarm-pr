@@ -1,8 +1,7 @@
 # TODO: 
 
-* update leaflet and jquery
-* display high resolution history for last hour + lower resolution for last 24h
-  * also show for other vessels within 1km
+* also show other vessels and their path history within 1km.
+* add hotline to differentiate old vs new path: https://github.com/iosphere/Leaflet.hotline
 * add line and distance to anchor to UI.
 * add check to propulsion.* before calling calling alarm.
 * remove / cleanup extra stuff in the module
@@ -12,3 +11,6 @@
   * warning levels - should be a binary trigger
 
 # DONE:
+
+* update leaflet and jquery
+* display high resolution history with paths plugin.

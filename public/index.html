@@ -5,10 +5,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Hoeken's Anchor Alarm</title>
-    <script src="jquery-3.5.1.min.js"></script>
-    <link rel="stylesheet" href="leaflet.css"/>
-    <script src="leaflet.js"></script>
-    <script src="leaflet.rotatedMarker.js"></script>
+    <script src="jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="leaflet/leaflet.css"/>
+    <script src="leaflet/leaflet.js"></script>
+    <script src="leaflet/leaflet.rotatedMarker.js"></script>
     <style>
        body {
           padding: 0;
@@ -98,7 +98,7 @@
   var positionHistory = [];
   var historyLine;
 
-  var map = L.map('map').setView([39.8283, -98.5795], 5);
+  var map = L.map('map').setView([-17.8414, 177.1827], 5);
   var boatIcon = L.icon({
     iconUrl: 'boat.png',
     iconSize:     [24, 48], // size of the icon
@@ -120,8 +120,6 @@
     iconSize:     [24, 24], // size of the icon
     iconAnchor:   [12, 12], // point of the icon which will correspond to marker's location
   });
-
-  historyLine = L.polyline([], {color: 'red'}).addTo(map);
 
   var urlParams = new URLSearchParams(window.location.search);
 
@@ -253,13 +251,15 @@
       $.get(`/signalk/v1/api/vessels/urn:mrn:imo:mmsi:${mmsi}/track`, (data) => {
         if (data.coordinates[0].length) {
           positionHistory = data.coordinates[0];
-          console.log(positionHistory);
           
-          for (let position of positionHistory) {
-            console.log(position);
-            let latlng = L.latLng(position[1], position[0]);
-            historyLine.addLatLng(latlng);
-          }
+          let points = [];
+          for (let position of positionHistory)
+            points.push([position[1], position[0]]);
+
+          historyLine = L.polyline(points, {
+            color: 'red',
+            weight: 1
+          }).addTo(map);
         }
       });
   });
