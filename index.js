@@ -50,7 +50,6 @@ module.exports = function(app) {
       }
 
       if ( app.registerActionHandler ) {
-
         app.registerActionHandler('vessels.self',
                                   `navigation.anchor.position`,
                                   putPosition)
@@ -901,7 +900,6 @@ module.exports = function(app) {
       }
     }
   
-    
     return null
   }
 
