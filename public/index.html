@@ -335,12 +335,8 @@
       $('#dropAnchor').click(() => {
         let mc = map.getCenter()
         dropAnchor(mc, maxRadius); //better UI response outside.
-        $.post('/plugins/hoekens-anchor-alarm/dropAnchor', () => {
-          let newPosition = { latitude: mc.lat, longitude: mc.lng };
-          $.post('/plugins/hoekens-anchor-alarm/setAnchorPosition', { position: newPosition }, () => {
-            $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: maxRadius }, () => {
-            });
-          });
+        let newPosition = { latitude: mc.lat, longitude: mc.lng };
+        $.post('/plugins/hoekens-anchor-alarm/dropAnchor', { position: newPosition, radius: maxRadius }, () => {
         }).fail((response) => {
           //TODO: add error checking in case that fails.
           if (response.status == 401) {
