@@ -73,9 +73,9 @@
         iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
       });
       let targetIcon = L.icon({
-        iconUrl: 'target.png',
-        iconSize: [12, 12], // size of the icon
-        iconAnchor: [6, 6], // point of the icon which will correspond to marker's location
+        iconUrl: 'boat.png',
+        iconSize: [12, 24], // size of the icon
+        iconAnchor: [6, 12], // point of the icon which will correspond to marker's location
       });
 
       let crosshairIcon = L.icon({
@@ -117,13 +117,6 @@
       };
 
       let layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
-
-
-
-
-
-
-
 
       //this is our initial data lookup call.  Needs to happen first.
       $.get('/signalk/v1/api/vessels/self', (data) => {
@@ -302,7 +295,7 @@
             }
             let position = vessel.navigation.position.value;
             let distance = calculateDistance(position.latitude, position.longitude, latitude, longitude);
-            if (distance <= maxRadius * 5) {
+            if (distance <= filterRadius) {
               detectedTargets.push(vessel.mmsi);
               distance = Math.round(distance * 10) / 10;
               if (vessel.mmsi in target) {

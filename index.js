@@ -255,7 +255,7 @@ module.exports = function(app) {
                                 position, configuration.position)
           var was_sent = alarm_sent
           alarm_sent = state
-          if ( was_sent && !state )
+          if (was_sent && !state )
           {
             //clear it
             app.debug("clear_it")

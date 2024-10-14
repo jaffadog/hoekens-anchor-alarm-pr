@@ -8,6 +8,7 @@
   * manual setting
   * storing radius and position in config
   * warning levels - should be a binary trigger
+  * config settings
 
 # DONE:
 
