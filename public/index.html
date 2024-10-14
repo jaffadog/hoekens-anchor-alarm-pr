@@ -5,65 +5,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Hoeken's Anchor Alarm</title>
-    <script src="jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="style.css"/>
     <link rel="stylesheet" href="leaflet/leaflet.css"/>
+    <script src="jquery-3.7.1.min.js"></script>
     <script src="leaflet/leaflet.js"></script>
     <script src="leaflet/leaflet.rotatedMarker.js"></script>
     <script src="leaflet/leaflet.hotline.js"></script>
-    <style>
-       body {
-          padding: 0;
-          margin: 0;
-       }
-       html, body, #map {
-          height: 100%;
-          width: 100%;
-          z-index: 1;
-          position: relative;
-       }
-
-       #map_container {
-          height: 100%;
-          width: 100%;
-          z-index: 1;
-          position: relative;
-       }
-
-       #map_toggle {
-          position: absolute;
-          top: 20px;
-          left: 50%;
-	  width: 300px;
-	  height: 50px;
-	  margin-left: -150px;
-          z-index: 99;
-	  opacity: 1;
-	  border-radius: 5px;
-	  text-align: center;
-	  line-height: 40px;
-       }
-       #info {
-          position: absolute;
-          bottom: 120px;
-          left: 50%;
-	  width: 200px;
-	  height: 50px;
-	  margin-left: -100px;
-          z-index: 99;
-	  padding-top: 10px;
-	  opacity: 1;
-	  border-radius: 5px;
-	  text-align: center;
-	  font-size: 26pt;
-	  color: white;
-       }
-        button {
-	  font-size: 23px;
-       }
-       #anchorDown, #anchorUp {
-	  display: none;
-       }
-    </style>
 </head>
 <body>
 <div id="map_container">
