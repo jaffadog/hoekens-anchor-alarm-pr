@@ -13,27 +13,81 @@
  * limitations under the License.
  */
 
-//const Bacon = require('baconjs');
-//const _ = require('lodash')
-//const path = require('path')
-//const fs = require('fs')
 const geolib = require('geolib')
 
 const subscriberPeriod = 1000
 
 module.exports = function(app) {
   var plugin = {};
+
+  plugin.id = "hoekens-anchor-alarm"
+  plugin.name = "Hoeken's Anchor Alarm"
+  plugin.description = "Put your Raspberry Pi on anchor watch."
+
+  plugin.schema = {
+    title: "Hoeken's Anchor Alarm",
+    type: "object",
+    required: [
+      "radius",
+      "active",
+    ],
+    properties: {
+      state: {
+        title: "Alarm Serverity",
+        description: "Anchor alarm notification level",
+        type: "string",
+        default: "emergency",
+        "enum": ["alert", "warn", "alarm", "emergency"]
+      }, 
+      enableEngineCheck: {
+        type: 'boolean',
+        title: 'Engine check before alarm',
+        description: "Check propulsion.* to see if the engines are on before sending alarm notification.",
+        default: true
+      },
+      noPositionAlarmTime: {
+        type: "number",
+        title: "Send a notification if no position is received for the given number of seconds",
+        default: 10
+      },
+      on: {
+        type: 'boolean',
+        title: 'Alarm On',
+        description: "Used for saving state in case of SignalK restart.",
+        default: false
+      },
+      radius: {
+        type: "number",
+        title: "Alarm Radius (m)",
+        description: "Used for saving state in case of SignalK restart.",
+        default: 60
+      },
+      position: {
+        type: "object",
+        title: "Anchor Position",
+        description: "Used for saving state in case of SignalK restart.",
+        properties: {
+          latitude: {
+            title: "Latitude",
+            type: "number"
+          },
+          longitude: {
+            title: "Longitude",
+            type: "number"
+          }
+        }
+      },
+    }
+  }
+
   var alarm_sent = false
   let onStop = []
-  var positionInterval
   var state
   var configuration
-  var delayStartTime
-  var lastPositionTime
   var lastPosition
   var lastTrueHeading
-  var positionAlarmSent
-  var saveOptionsTimer
+//  var positionInterval
+//  var saveOptionsTimer
   
   plugin.start = function(props) {
     configuration = props
@@ -46,7 +100,7 @@ module.exports = function(app) {
            && typeof position != 'undefined'
            && typeof radius != 'undefined' )
       {
-        startWatchingPosistion()
+        startWatchingPosition()
       }
 
       if ( app.registerActionHandler ) {
@@ -58,9 +112,9 @@ module.exports = function(app) {
                                   `navigation.anchor.maxRadius`,
                                   putRadius)
 
-        app.registerActionHandler('vessels.self',
-                                  `navigation.anchor.rodeLength`,
-                                  putRodeLength)
+        // app.registerActionHandler('vessels.self',
+        //                           `navigation.anchor.rodeLength`,
+        //                           putRodeLength)
       }
 
       app.handleMessage(plugin.id, {
@@ -88,22 +142,32 @@ module.exports = function(app) {
     }
   }
 
+  // TODO: this appears to be old unsupported code?  why timeout?
+  // function savePluginOptions() {
+  //   if ( app.savePluginOptionsSync ) {
+  //     app.savePluginOptionsSync(configuration)
+  //   } else if ( !saveOptionsTimer ) {
+  //     saveOptionsTimer = setTimeout(() => {
+  //       app.debug('saving options..')
+  //       saveOptionsTimer = undefined
+  //       app.savePluginOptions(configuration, err => {
+  //         if ( err ) {
+  //           app.error(err)
+  //         }
+  //       })
+  //     }, 1000)
+  //   }
+  // }
+
   function savePluginOptions() {
-    if ( app.savePluginOptionsSync ) {
-      app.savePluginOptionsSync(configuration)
-    } else if ( !saveOptionsTimer ) {
-      saveOptionsTimer = setTimeout(() => {
-        app.debug('saving options..')
-        saveOptionsTimer = undefined
-        app.savePluginOptions(configuration, err => {
-          if ( err ) {
-            app.error(err)
-          }
-        })
-      }, 1000)
-    }
+    app.debug('saving options..')
+    app.savePluginOptions(configuration, err => {
+      if ( err ) {
+        app.error(err)
+      }
+    })
   }
-  
+
   function putRadius(context, path, value, cb) {
     app.handleMessage(plugin.id, {
       updates: [
@@ -121,7 +185,7 @@ module.exports = function(app) {
     configuration["radius"] = value
     if ( configuration["position"] ) {
       configuration["on"] = true
-      startWatchingPosistion()
+      startWatchingPosition()
     }
 
     try {
@@ -133,29 +197,6 @@ module.exports = function(app) {
     }
   }
 
-  function putRodeLength(context, path, value, cb) {
-    app.handleMessage(plugin.id, {
-      updates: [
-        {
-          values: [
-            {
-              path: "navigation.anchor.rodeLength",
-              value: value
-            }
-          ]
-        }
-      ]
-    })
-
-    let res = setManualAnchor(null, value)
-    
-    if ( res.code != 200 ) {
-      return {state: 'FAILURE', message: res.message}
-    } else {
-      return {state: 'SUCCESS'}
-    }
-  }
-
   function putPosition(context, path, value, cb) {
     try {
       if ( value == null ) {
@@ -164,14 +205,12 @@ module.exports = function(app) {
         var delta = getAnchorDelta(app, null, value, null, configuration["radius"], true, null);
         app.handleMessage(plugin.id, delta)
         
-        configuration["position"] = { "latitude": value.latitude,
-                                      "longitude": value.longitude,
-                                      "altitude": value.altitude }
+        configuration["position"] = { "latitude": value.latitude, "longitude": value.longitude }
         
-        //configuration["radius"] = value.radius
+        configuration["radius"] = value.radius
         if ( configuration["radius"] ) {
           configuration["on"] = true
-          startWatchingPosistion()
+          startWatchingPosition()
         }
 
         savePluginOptions()
@@ -192,11 +231,14 @@ module.exports = function(app) {
     alarm_sent = false
     var delta = getAnchorDelta(app, null, null, null, null, false, null)
     app.handleMessage(plugin.id, delta)
+
     stopWatchingPosition()
-    if ( positionInterval ) {
-      clearInterval(positionInterval)
-      positionInterval = null
-    }
+    
+    //OLD CODE?
+    // if ( positionInterval ) {
+    //   clearInterval(positionInterval)
+    //   positionInterval = null
+    // }
   }
 
   function stopWatchingPosition()
@@ -205,7 +247,7 @@ module.exports = function(app) {
     onStop = []
   }
 
-  function startWatchingPosistion()
+  function startWatchingPosition()
   {
     if ( onStop.length > 0 )
       return
@@ -249,19 +291,17 @@ module.exports = function(app) {
         if ( position ) {
                     
           var state
-          lastPositionTime = Date.now()
           lastPosition = position
           state = checkPosition(app, plugin, configuration.radius,
                                 position, configuration.position)
           var was_sent = alarm_sent
           alarm_sent = state
-          if (was_sent && !state )
+          if (was_sent && !state)
           {
             //clear it
             app.debug("clear_it")
             var delta = getAnchorAlarmDelta(app, "normal")
             app.handleMessage(plugin.id, delta)
-            delayStartTime = undefined
           }
 
           sendAnchorAlarm(state, app, plugin)
@@ -271,8 +311,7 @@ module.exports = function(app) {
           if ( typeof trueHeading  !== 'undefined' ) {
             lastTrueHeading = trueHeading
           }
-          computeAnchorApparentBearing(lastPosition, configuration.position,
-                                       lastTrueHeading)
+          computeAnchorApparentBearing(lastPosition, configuration.position, lastTrueHeading)
         }
       }
     )
@@ -290,7 +329,6 @@ module.exports = function(app) {
       app.handleMessage(plugin.id, delta)
     }
     alarm_sent = false
-    delayStartTime = undefined
     
     delete configuration["position"]
     delete configuration["radius"]
@@ -298,10 +336,11 @@ module.exports = function(app) {
 
     stopWatchingPosition()
     
-    if ( positionInterval ) {
-      clearInterval(positionInterval)
-      positionInterval = null
-    }
+    //OLD CODE?
+    // if ( positionInterval ) {
+    //   clearInterval(positionInterval)
+    //   positionInterval = null
+    // }
 
     app.handleMessage(plugin.id, {
       updates: [
@@ -361,7 +400,7 @@ module.exports = function(app) {
           configuration.position.altitude = depth * -1;
         }
 
-        startWatchingPosistion()
+        startWatchingPosition()
 
         try {
           savePluginOptions()
@@ -406,11 +445,6 @@ module.exports = function(app) {
                                  position.latitude,
                                  position.longitude)
           
-          var fudge = configuration.fudge
-          if ( typeof fudge !== 'undefined' && fudge > 0 )
-          {
-            radius += fudge
-          }
           app.debug("calc_distance: " + radius)
         }
 
@@ -498,194 +532,6 @@ module.exports = function(app) {
         })
       }
     });
-
-    router.post("/setManualAnchor", (req, res) => {
-      app.debug("set manual anchor")
-      var depth = req.body['anchorDepth']
-      var rode = req.body['rodeLength']
-      var result = setManualAnchor(depth, rode)
-      res.status(result.statusCode)
-      res.json(result.message)
-    })
-
-    
-  }
-
-  function setManualAnchor(depth, rode) {
-      var position = app.getSelfPath('navigation.position')
-      if ( position.value )
-        position = position.value
-      if ( typeof position == 'undefined' )
-      {
-        app.debug("no position available")
-        return {statusCode: 403, state: "FAILED", message: "no position available"}
-      }
-
-      var heading = app.getSelfPath('navigation.headingTrue.value')
-     
-      if ( typeof heading == 'undefined' )
-      {
-        heading = app.getSelfPath('navigation.headingMagnetic.value')
-        if ( typeof heading == 'undefined' )
-        {
-          return {statusCode: 403, state: "FAILED", message: "no heading available"}
-        }
-      }
-      
-      app.debug("anchor rode: " + rode + " depth: " + depth)
-
-      var maxRadius = rode;
-
-      if ( depth == 0 )
-      {
-        var sd = app.getSelfPath('environment.depth.belowSurface.value')
-        if ( typeof sd != 'undefined' )
-        {
-          depth = sd
-        }
-      }
-
-      if ( depth != 0 && rode != 0 )
-      {
-        var height = configuration.bowHeight;
-        var heightFromBow = depth
-        if ( typeof height !== 'undefined' && height > 0 )
-        {
-          heightFromBow += height
-        }
-        //maxRadius = (depth * depth) + (rode * rode)
-        maxRadius = (rode * rode) - (heightFromBow *heightFromBow)
-        maxRadius = Math.sqrt(maxRadius)
-      }
-
-      app.debug("depth: " + depth)      
-      app.debug("heading: " + heading)
-      app.debug("maxRadius: " + maxRadius)
-
-      var gps_dist = app.getSelfPath("sensors.gps.fromBow.value");
-      if ( typeof gps_dist != 'undefined' )
-      {
-        maxRadius += gps_dist
-      }
-
-      var curRadius = maxRadius
-      var fudge = configuration['fudge']
-      if ( typeof fudge !== 'undefined' && fudge > 0 )
-      {
-        app.debug("fudge radius by " + fudge)
-        maxRadius += fudge
-      }
-
-      var newposition = calc_position_from(app, position, heading, curRadius)
-
-      var delta = getAnchorDelta(app, position, newposition, curRadius,
-                                 maxRadius, true, depth);
-      app.handleMessage(plugin.id, delta)
-      
-      delete configuration["position"]
-      configuration["on"] = true
-      configuration["radius"] = maxRadius
-      configuration["position"] = newposition
-      configuration["rodeLength"] = newposition
-      if ( rode ) {
-        configuration["rodeLength"] = rode
-      }
-
-      if ( depth ) {
-        configuration.position.altitude = depth * -1
-      }
-    
-      startWatchingPosistion()
-    
-      try {
-        savePluginOptions()
-        return {statusCode: 200, state: "COMPLETED", message: "ok"}
-      } catch ( err ) {
-        app.error(err)
-        return {statusCode: 501, state: "FAILED", message: err.message}
-      }
-    }
-    
-  plugin.id = "hoekens-anchor-alarm"
-  plugin.name = "Hoeken's Anchor Alarm"
-  plugin.description = "Fork of signalk-anchoralarm-plugin"
-
-  plugin.schema = {
-    title: "Hoeken's Anchor Alarm",
-    type: "object",
-    required: [
-      "radius",
-      "active",
-    ],
-    properties: {
-      on: {
-        type: 'boolean',
-        title: 'Alarm On',
-        default: false
-      },
-      radius: {
-        type: "number",
-        title: "Alarm Radius (m)",
-        default: 60
-      },
-      delay: {
-        type: "number",
-        title: "Send a notification after the boat has been outside of the alarms radius for the given number of seconds (0 for imediate)",
-        default: 0
-      },
-      warningPercentage: {
-        type: "number",
-        title: "Percentage of alarm radius to set a warning (0 for none)",
-        default: 0
-      },
-      warningNotification: {
-        type: "boolean",
-        title: "Send a notification when past the warning percentage",
-        default: false
-      },
-      noPositionAlarmTime: {
-        type: "number",
-        title: "Send a notification if no position is received for the given number of seconds",
-        default: 10
-      },
-      position: {
-        type: "object",
-        title: "Anchor Position",
-        properties: {
-          latitude: {
-            title: "Latitude",
-            type: "number"
-          },
-          longitude: {
-            title: "Longitude",
-            type: "number"
-          },
-          altitude: {
-            title: "Altitude",
-            type: "number"
-          }
-        }
-      },
-      fudge: {
-        type: "number",
-        title: "Alarm Radius Fudge Factor (m)",
-        description: "When setting an automatic alarm, this will be added to the alarm radius to handle gps accuracy or a slightly off anchor position",
-        default: 0
-      },
-      bowHeight: {
-        type: "number",
-        title: "The height of the bow from the water (m)",
-        description: "This is used to calculate rode length",
-        default: 0
-      },
-      state: {
-        title: "State",
-        description: "When an anchor drift notifcation is sent, this wil be used as the notitication state",
-        type: "string",
-        default: "emergency",
-        "enum": ["alert", "warn", "alarm", "emergency"]
-      }      
-    }
   }
 
   function getAnchorDelta(app, vesselPosition, position,
@@ -770,38 +616,18 @@ module.exports = function(app) {
           path: 'navigation.anchor.maxRadius',
           value: maxRadius
         })
-        var zones
-        if ( configuration.warningPercentage ) {
-          let warning = maxRadius * (configuration.warningPercentage/100)
-          zones = [
-            {
-              state: "normal",
-              lower: 0,
-              upper: warning
-            },
-            {
-              state: "warn",
-              lower: warning,
-              upper: maxRadius
-            },
-            {
-              state: configuration.state,
-              lower: maxRadius
-            }
-          ]
-        } else {
-          zones = [
-            {
-              state: "normal",
-              lower: 0,
-              upper: maxRadius
-            },
-            {
-              state: configuration.state,
-              lower: maxRadius
-            }
-          ]
-        }
+        var zones = [
+          {
+            state: "normal",
+            lower: 0,
+            upper: maxRadius
+          },
+          {
+            state: configuration.state,
+            lower: maxRadius
+          }
+        ];
+
         values.push({
           path: 'navigation.anchor.meta',
           value: {
@@ -809,23 +635,13 @@ module.exports = function(app) {
           }
         })
       }
-      if ( typeof configuration.bowHeight !== 'undefined' ) {
-        values.push({
-          path: 'design.bowAnchorHight',
-          value: configuration.bowHeight});
-      }
-      if ( typeof configuration.fudge !== 'undefined' ) {
-        values.push({
-          path: 'navigation.anchor.fudgeFactor',
-          value: configuration.fudge});
-      }
     }
     else
     {
       values = [
         {
           path: 'navigation.anchor.position',
-          value: null //{ latitude: null, longitude: null, altitude: null }
+          value: null //{ latitude: null, longitude: null}
         },
         {
           path: 'navigation.anchor.currentRadius',
@@ -835,16 +651,14 @@ module.exports = function(app) {
           path: 'navigation.anchor.maxRadius',
           value: null
         },
-        {
-          path: 'navigation.anchor.distanceFromBow',
-          value: null
-        }
-        /*
-          {
-          path: 'navigation.anchor.state',
-          value: 'off'
-          }
-        */
+        // {
+        //   path: 'navigation.anchor.distanceFromBow',
+        //   value: null
+        // }
+        // {
+        // path: 'navigation.anchor.state',
+        // value: 'off'
+        // }
       ]
     }
 
@@ -860,44 +674,25 @@ module.exports = function(app) {
     return delta;
   }
 
+  function checkPosition(app, plugin, radius, position, anchor_position) {
+    //app.debug("in checkPosition: " + position.latitude + ',' + anchor_position.latitude)
 
-  function checkPosition(app, plugin, radius, possition, anchor_position) {
-    //app.debug("in checkPosition: " + possition.latitude + ',' + anchor_position.latitude)
-
-    var meters = calc_distance(possition.latitude, possition.longitude,
+    var meters = calc_distance(position.latitude, position.longitude,
                                anchor_position.latitude, anchor_position.longitude);
     
     app.debug("distance: " + meters + ", radius: " + radius);
     
-    var delta = getAnchorDelta(app, possition, anchor_position, meters, radius, false)
+    var delta = getAnchorDelta(app, position, anchor_position, meters, radius, false)
     app.handleMessage(plugin.id, delta)
 
     if ( radius != null ) {
-      var state
-      var warning = configuration.warningPercentage ? (configuration.warningPercentage/100) * radius : 0
       if ( meters > radius ) {
+        //TODO: add our engine check here.
         state = configuration.state
-      } else if ( warning > 0 && configuration.warningNotification && meters > warning ) {
-        state = 'warn'
       }
 
-      if ( state ) {
-        if ( !configuration.delay ) {
-          return state
-        } else {
-          if ( delayStartTime ) {
-            if ( (Date.now() - delayStartTime)/1000 > configuration.delay ) {
-              app.debug('alarm delay reached')
-              return state
-            }
-          } else {
-            delayStartTime = Date.now()
-            app.debug('delaying alarm for %d seconds', configuration.delay)
-          }
-        }
-      } else if ( delayStartTime ) {
-        delayStartTime = undefined
-      }
+      if ( state )
+        return state
     }
   
     return null
@@ -907,11 +702,11 @@ module.exports = function(app) {
     if ( typeof heading != 'undefined' )
     {
       var gps_dist = app.getSelfPath("sensors.gps.fromBow.value");
-      app.debug("gps_dist: " + gps_dist)
+      //app.debug("gps_dist: " + gps_dist)
       if ( typeof gps_dist != 'undefined' )
       {
         position = calc_position_from(app, position, heading, gps_dist)
-        app.debug("adjusted position by " + gps_dist)
+        //app.debug("adjusted position by " + gps_dist)
       }
     }
     return position
@@ -946,7 +741,7 @@ module.exports = function(app) {
         }
       }
 
-      app.debug("apparent " + radsToDeg(trueHeading) + ", " + radsToDeg(bearing) + ", " + apparent + ", " + radsToDeg(apparent))
+      //app.debug("apparent " + radsToDeg(trueHeading) + ", " + radsToDeg(bearing) + ", " + apparent + ", " + radsToDeg(apparent))
       
       app.handleMessage(plugin.id, {
         updates: [
@@ -994,7 +789,7 @@ function calc_position_from(app, position, heading, distance)
   var dist = (distance / 1000) / 1.852  //m to nm
   dist /= (180*60/Math.PI)  // in radians
 
-  app.debug("dist: " + dist)
+  //app.debug("dist: " + dist)
   
   heading = (Math.PI*2)-heading
   
@@ -1015,6 +810,7 @@ function getAnchorAlarmDelta(app, state, msg)
   }
   let method = [ "visual", "sound" ]
   const existing = app.getSelfPath('notifications.navigation.anchor.value')
+  console.log(existing);
   app.debug('existing %j', existing)
   if ( existing && existing.state !== 'normal' ) {
     method = existing.method
