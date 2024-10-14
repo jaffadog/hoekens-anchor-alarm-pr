@@ -509,19 +509,31 @@ module.exports = function (app) {
     app.handleMessage(plugin.id, delta)
 
     let new_state = "normal";
+    let do_update = false;
     let message = "Anchor Alarm - OK";
 
+    //compare our radius
     if (radius != null) {
       if (meters > radius) {
-        if (!configuration.enableEngineCheck || !checkEngineState(app, plugin)) {
-          new_state = configuration.state;
-          let meters_rounded = Math.round(meters);
-          message = `Anchor Alarm - Dragging (${meters_rounded}m)`;
+        //okay, we're dragging.
+        new_state = configuration.state;
+        let meters_rounded = Math.round(meters);
+        message = `Anchor Alarm - Dragging (${meters_rounded}m)`;
+
+        //wait, do we have engines on?
+        if (configuration.enableEngineCheck) {
+          if (checkEngineState(app, plugin)) {
+            app.debug("alarm disabled due to engines on: %j", delta)
+            do_update = true;
+            new_state = "normal";
+            message = "Anchor Alarm - Disabled due to engine(s) on.";
+            raiseAnchor();
+          }
         }
       }
     }
 
-    if (new_state !== alarm_state) {
+    if (new_state !== alarm_state || do_update) {
       var delta = getAnchorAlarmDelta(app, new_state, message)
       app.debug("alarm state change: %j", delta)
       app.handleMessage(plugin.id, delta)
@@ -535,6 +547,21 @@ module.exports = function (app) {
 
 function checkEngineState(app, plugin) {
   app.debug("in checkEngineState");
+
+  propulsion = app.getSelfPath('propulsion');
+
+  console.log(propulsion);
+
+  if (propulsion != 'undefined') {
+    const propulsionKeys = Object.keys(propulsion);
+
+    for (let key of propulsionKeys) {
+      if (propulsion[key] && propulsion[key].revolutions && propulsion[key].revolutions.value > 0)
+        return true;
+      if (propulsion[key] && propulsion[key].state && propulsion[key].state.value === 'started')
+        return true;
+    }
+  }
 
   return false;
 }
