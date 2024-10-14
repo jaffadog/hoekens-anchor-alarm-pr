@@ -12,6 +12,7 @@
   <script src="leaflet/leaflet.js"></script>
   <script src="leaflet/leaflet.rotatedMarker.js"></script>
   <script src="leaflet/leaflet.hotline.js"></script>
+  <script src="leaflet/leaflet.textpath.js"></script>
 </head>
 
 <body>
@@ -75,7 +76,6 @@
 
       let historyLine;
       let anchorLine;
-      let anchorLineTooltip;
 
       let urlParams = new URLSearchParams(window.location.search);
 
@@ -202,13 +202,10 @@
           $('#anchorUp').show();
         }
 
-        anchorLineTooltip = L.tooltip(currentCoordinates, "foo");
         anchorLine = L.polyline([currentCoordinates, anchorCoordinates], {
           color: 'grey',
           weight: 2
         }).addTo(map);
-        anchorLine.bindTooltip(anchorLineTooltip);
-        anchorLineTooltip.showTooltip();
 
         updateAnchorLine(currentCoordinates, anchorCoordinates);
 
@@ -279,22 +276,29 @@
       $('#raiseAnchor').click(() => {
         let agree = confirm('Do you really want to disable your anchor alarm?');
         if (agree) {
-          $.post('/plugins/hoekens-anchor-alarm/raiseAnchor', () => {
-            raiseAnchor();
+          raiseAnchor(); //better UI response outside.
+          $.post('/plugins/hoekens-anchor-alarm/raiseAnchor', () => { }).fail((response) => {
+            //TODO: add error checking in case that fails.
+
+            if (response.status == 401) {
+              location.href = "/admin/#/login";
+            }
           });
         }
       });
 
       $('#dropAnchor').click(() => {
+        let mc = map.getCenter()
+        dropAnchor(mc, maxRadius); //better UI response outside.
         $.post('/plugins/hoekens-anchor-alarm/dropAnchor', () => {
-          let mc = map.getCenter()
           let newPosition = { latitude: mc.lat, longitude: mc.lng };
           $.post('/plugins/hoekens-anchor-alarm/setAnchorPosition', { position: newPosition }, () => {
             $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: maxRadius }, () => {
-              dropAnchor(mc, maxRadius);
             });
           });
         }).fail((response) => {
+          //TODO: add error checking in case that fails.
+
           if (response.status == 401) {
             location.href = "/admin/#/login";
           }
@@ -391,9 +395,23 @@
         anchorLine.setLatLngs([current, anchor]);
         let distance = calculateDistance(current.lat, current.lng, anchor.lat, anchor.lng);
 
-        anchorLineTooltip.setContent(Math.round(distance * 10) / 10 + 'm');
-        // anchorLine.bindTooltip(anchorLineTooltip);
-        // anchorLineTooltip.openTooltip();
+        anchorLine.setText("");
+
+        //this will fail if you're anchored exactly on the equator, lol.
+        let orientation = 0;
+        if (current.lng > anchor.lng)
+          orientation = "flip";
+
+        anchorLine.setText(Math.round(distance * 10) / 10 + 'm', {
+          orientation: orientation,
+          offset: 12,
+          center: true,
+          attributes: {
+            class: "anchorLineLabel"
+          }
+        });
+        // anchorLine.bindTooltip(L.tooltip({ permanent: true })).openTooltip();
+        // anchorLine.getTooltip().setContent(Math.round(distance * 10) / 10 + 'm');
       }
 
       function calculateDistance(lat1, lon1, lat2, lon2) {
