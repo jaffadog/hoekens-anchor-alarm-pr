@@ -84,6 +84,11 @@
         iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
       });
 
+      crosshair = L.marker({
+        icon: crosshairIcon
+      });
+
+
       let historyLine;
       let anchorLine;
       let anchorLineAngle;
@@ -124,54 +129,47 @@
 
         //our radius defaults.
         if (data.environment.depth.belowTransducer.value)
-          maxRadius = Math.round(parseInt(data.environment.depth.belowTransducer.value) * 5);
+          maxRadius = Math.round(parseInt(data.environment.depth.belowTransducer.value) * 10);
         else
           maxRadius = 50;
+
+        //keep defaults sane
+        maxRadius = Math.min(150, maxRadius);
+
+        updateDepthUI(data.environment.depth.belowTransducer.value);
+        updateWindAngleUI(data.environment.wind.directionTrue.value);
+        updateWindSpeedUI(data.environment.wind.speedApparent.value);
 
         data = data.navigation;
         latitude = data.position.value.latitude;
         longitude = data.position.value.longitude;
+
         let heading = data.headingTrue?.value;
         if (heading) {
           heading = heading * 57.295779513; // Convert to degrees
         } else {
           heading = 0;
         }
+
         let latlng = L.latLng(latitude, longitude);
+        currentCoordinates = latlng;
+
         zoom = 19;
         if (urlParams.has('zoom')) {
           zoom = urlParams.get('zoom');
         }
         map.setView(latlng, zoom);
+
         boat = L.marker(latlng, {
           rotationAngle: heading,
           icon: boatIcon
         }).addTo(map)
 
-        currentCoordinates = latlng;
-
-        crosshair = L.marker(latlng, {
-          icon: crosshairIcon
-        });
-
         anchorRadius = L.circle(map.getCenter(), maxRadius, { color: 'green' });
+        anchorRadius.addTo(map)
         uiSetRadius(maxRadius)
 
         anchorCoordinates = map.getCenter();
-
-        if ((data.anchor) && (data.anchor.position) && (data.anchor.position.value)) {
-          let anchorPosition = data.anchor.position.value;
-          let anchorCoord = L.latLng(anchorPosition.latitude, anchorPosition.longitude);
-          let radius = parseInt(data.anchor.maxRadius.value);
-          dropAnchor(anchorCoord, radius);
-        } else {
-          //show our potential anchor spot.
-          crosshair = L.marker(latlng, {
-            icon: crosshairIcon
-          }).addTo(map)
-
-          $('#anchorUp').show();
-        }
 
         anchorLine = L.polyline([currentCoordinates, anchorCoordinates], {
           color: 'grey',
@@ -183,9 +181,16 @@
           weight: 0
         }).addTo(map);
 
-        updateAnchorLine(currentCoordinates, anchorCoordinates);
+        if ((data.anchor) && (data.anchor.position) && (data.anchor.position.value)) {
+          let anchorPosition = data.anchor.position.value;
+          let anchorCoordinates = L.latLng(anchorPosition.latitude, anchorPosition.longitude);
+          let radius = parseInt(data.anchor.maxRadius.value);
+          dropAnchor(anchorCoordinates, radius);
+        } else {
+          raiseAnchor();
+        }
 
-        anchorRadius.addTo(map)
+        updateAnchorLine(currentCoordinates, anchorCoordinates);
 
         map.on('move', function (ev) {
           if (!isAnchored) {
@@ -258,28 +263,40 @@
 
         //update our depth
         $.get('/signalk/v1/api/vessels/self/environment/depth/belowTransducer/value', (depth) => {
-          depth = Math.round(depth * 10) / 10;
-          $('#depthValue').html(`${depth}m`);
+          updateDepthUI(depth);
         }).fail(() => {
           $('#depthValue').html("~");
         });
 
         //update wind speed.
-        $.get('http://boatpi.local/signalk/v1/api/vessels/self/environment/wind/speedApparent/value', (speedApparent) => {
-          let kts = Math.round(speedApparent * 1.94384);
-          $('#awsValue').html(`${kts}kts`);
+        $.get('/signalk/v1/api/vessels/self/environment/wind/speedApparent/value', (speedApparent) => {
+          updateWindSpeedUI(speedApparent);
         }).fail(() => {
           $('#awsValue').html("~");
         });
 
         //update wind angle.
-        $.get('http://boatpi.local/signalk/v1/api/vessels/self/environment/wind/directionTrue/value', (directionTrue) => {
-          let angle = Math.round(rad2deg(directionTrue));
-          if (angle < 0)
-            angle = 360 - angle;
-          $('#awaValue').html(`${angle}°`);
+        $.get('/signalk/v1/api/vessels/self/environment/wind/directionTrue/value', (directionTrue) => {
+          updateWindAngleUI(directionTrue);
         }).fail(() => {
           $('#awaValue').html("~");
+        });
+
+        //update our watch status
+        $.get('/signalk/v1/api/vessels/self/navigation/anchor', (anchorStatus) => {
+          if (anchorStatus.state.value === "on" && !isAnchored) {
+            anchorCoordinates = L.latLng(anchorStatus.position.value.latitude, anchorStatus.position.value.longitude);
+            maxRadius = anchorStatus.maxRadius.value;
+            dropAnchor(anchorCoordinates, maxRadius);
+          } else if (anchorStatus.state.value === "off" && isAnchored) {
+            raiseAnchor();
+          }
+
+          if (typeof anchorStatus.maxRadius.value !== "undefined" && anchorStatus.maxRadius.value) {
+            maxRadius = anchorStatus.maxRadius.value;
+            console.log(maxRadius);
+            uiSetRadius(maxRadius);
+          }
         });
 
         //update any other vessels and their tracks.
@@ -413,7 +430,8 @@
       }
 
       function raiseAnchor() {
-        map.removeLayer(anchor);
+        if (typeof anchor !== "undefined")
+          map.removeLayer(anchor);
 
         //anchorRadius.setLatLng(map.getCenter());
         anchorRadius.setStyle({ 'color': 'green' })
@@ -423,12 +441,43 @@
 
         isAnchored = false;
 
+        //put our center on the old anchor spot.
+        map.panTo(anchorCoordinates);
+
         crosshair = L.marker(map.getCenter(), {
           icon: crosshairIcon
         }).addTo(map)
 
-        anchorCoordinates = map.getCenter();
         updateAnchorLine(currentCoordinates, anchorCoordinates);
+      }
+
+      function updateDepthUI(depth) {
+        if (typeof depth !== "undefined") {
+          depth = Math.round(depth * 10) / 10;
+          $('#depthValue').html(`${depth}m`);
+        } else {
+          $('#depthValue').html('~');
+        }
+      }
+
+      function updateWindSpeedUI(speedApparent) {
+        if (typeof speedApparent !== "undefined") {
+          let kts = Math.round(speedApparent * 1.94384);
+          $('#awsValue').html(`${kts}kts`);
+        } else {
+          $('#awsValue').html('~');
+        }
+      }
+
+      function updateWindAngleUI(directionTrue) {
+        if (typeof directionTrue !== "undefined") {
+          let angle = Math.round(rad2deg(directionTrue));
+          if (angle < 0)
+            angle = 360 - angle;
+          $('#awaValue').html(`${angle}°`);
+        } else {
+          $('#awaValue').html('~');
+        }
       }
 
       function updateAnchorLine(current, anchor) {
