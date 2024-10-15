@@ -1,7 +1,7 @@
 {
   "name": "hoekens-anchor-alarm",
-  "version": "1.0.1",
-  "description": "Fork of signalk-anchoralarm-plugin with upgraded UI, historical tracks, and lazy mode engine state awareness.",
+  "version": "1.1.0",
+  "description": "Fork of signalk-anchoralarm-plugin with upgraded UI, historical tracks, and lazy mode.",
   "main": "index.js",
   "scripts": {
     "test": "$NODE $npm_package_main",
@@ -23,9 +23,6 @@
   "dependencies": {
     "geolib": "^3.3.3",
     "@signalk/tracks-plugin": "^2.0.2"
-  },
-  "devDependencies": {
-    "@signalk/github-create-release": "^1.0.1"
   },
   "repository": {
     "type": "git",

@@ -50,6 +50,8 @@
       let _mmsi;
       let _maxRadius = 50;
       let _vessels = {};
+      let _vesselTracks = {};
+
       let _isAnchored = false;
 
       let boatMarker;
@@ -85,7 +87,6 @@
         icon: crosshairIcon
       });
 
-      let historyLine;
       let anchorLine;
       let anchorLineAngle;
 
@@ -123,28 +124,42 @@
       $.get('/signalk/v1/api/vessels/self', (data) => {
         _mmsi = data.mmsi;
 
-        //our radius defaults.
-        if (data.environment.depth.belowTransducer.value)
-          _maxRadius = Math.round(parseInt(data.environment.depth.belowTransducer.value) * 10);
-        else
-          _maxRadius = 50;
+        //anchor distance guess...
+        let anchorDistanceGuess = 0;
 
-        //keep defaults sane
+        //default to 5x scope
+        if (typeof data.environment.depth?.belowTransducer?.value !== "undefined")
+          anchorDistanceGuess += data.environment.depth.belowTransducer.value * 5;
+
+        //add in our gps offset
+        if (typeof data.sensors?.gps?.fromBow?.value !== "undefined")
+          anchorDistanceGuess += data.sensors.gps.fromBow.value;
+
+        console.log(`anchor distance guess: ${anchorDistanceGuess}`);
+
+        //our radius defaults.
+        _maxRadius = Math.round(parseInt(anchorDistanceGuess * 1.5));
+        _maxRadius = Math.max(0, _maxRadius);
         _maxRadius = Math.min(150, _maxRadius);
 
-        updateDepthUI(data.environment.depth.belowTransducer.value);
-        updateWindAngleUI(data.environment.wind.directionTrue.value);
-        updateWindSpeedUI(data.environment.wind.speedApparent.value);
+        if (typeof data.environment.depth?.belowTransducer?.value !== "undefined")
+          updateDepthUI(data.environment.depth.belowTransducer.value);
+        if (typeof data.environment.wind?.directionTrue?.value !== "undefined")
+          updateWindAngleUI(data.environment.wind.directionTrue.value);
+        if (typeof data.environment.wind?.speedApparent?.value !== "undefined")
+          updateWindSpeedUI(data.environment.wind.speedApparent.value);
 
         data = data.navigation;
         _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);;
 
         let heading = data.headingTrue?.value;
         if (heading) {
-          heading = heading * 57.295779513; // Convert to degrees
+          heading = rad2deg(heading);
         } else {
           heading = 0;
         }
+
+        console.log(`heading: ${heading}`);
 
         zoom = 19;
         if (urlParams.has('zoom')) {
@@ -179,6 +194,8 @@
           let radius = parseInt(data.anchor.maxRadius.value);
           dropAnchor(_anchorCoordinates, radius);
         } else {
+          let anchorPositionGuess = calculateDestinationPoint(_currentCoordinates.lat, _currentCoordinates.lng, heading, anchorDistanceGuess);
+          _anchorCoordinates = L.latLng(anchorPositionGuess.latitude, anchorPositionGuess.longitude);
           raiseAnchor();
         }
 
@@ -194,32 +211,45 @@
           }
         });
 
-        $.get(`/signalk/v1/api/vessels/urn:mrn:imo:mmsi:${_mmsi}/track`, (data) => {
-          if (data.coordinates[0].length) {
-            const history = data.coordinates[0];
+        // $.get(`/signalk/v1/api/vessels/urn:mrn:imo:mmsi:${_mmsi}/track`, (data) => {
+        $.get(`/signalk/v1/api/tracks?radius=${_filterRadius}`, (tracks) => {
+          const mmsiRegex = /urn:mrn:imo:mmsi:(\d+)$/;
+          for (uri in tracks) {
+            const match = uri.match(mmsiRegex);
+            if (match) {
+              let mmsi = match[1];
+              let data = tracks[uri];
 
-            let points = [];
-            let i = 0;
-            for (let position of history) {
-              let lat = position[1];
-              let lon = position[0];
-              let distance = calculateDistance(_currentCoordinates.lat, _currentCoordinates.lng, lat, lon);
+              if (data.coordinates[0].length) {
 
-              if (distance < _filterRadius) {
-                points.push([lat, lon, i]);
-                i++;
+                console.log(`loading track - ${mmsi}`);
+
+                const history = data.coordinates[0];
+
+                let points = [];
+                let i = 0;
+                for (let position of history) {
+                  let lat = position[1];
+                  let lon = position[0];
+                  let distance = calculateDistance(_currentCoordinates.lat, _currentCoordinates.lng, lat, lon);
+
+                  if (distance < _filterRadius) {
+                    points.push([lat, lon, i]);
+                    i++;
+                  }
+                }
+
+                _vesselTracks[mmsi] = L.hotline(points, {
+                  color: 'red',
+                  weight: 1,
+                  min: 0,
+                  max: points.length,
+                  palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
+                  outlineWidth: 0,
+                  text: ''
+                }).addTo(map);
               }
             }
-
-            historyLine = L.hotline(points, {
-              color: 'red',
-              weight: 1,
-              min: 0,
-              max: points.length,
-              palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
-              outlineWidth: 0,
-              text: ''
-            }).addTo(map);
           }
         });
 
@@ -245,8 +275,8 @@
           boatMarker.setLatLng(_currentCoordinates);
           boatMarker.setRotationAngle(heading);
 
-          if (historyLine)
-            historyLine.addLatLng([_currentCoordinates.lat, _currentCoordinates.lng, historyLine.getLatLngs().length]);
+          if (_vesselTracks[_mmsi])
+            _vesselTracks[_mmsi].addLatLng([_currentCoordinates.lat, _currentCoordinates.lng, _vesselTracks[_mmsi].getLatLngs().length]);
 
           updateAnchorLine(_currentCoordinates, _anchorCoordinates);
         });
@@ -284,7 +314,6 @@
 
           if (typeof anchorStatus.maxRadius.value !== "undefined" && anchorStatus.maxRadius.value) {
             _maxRadius = anchorStatus.maxRadius.value;
-            console.log(_maxRadius);
             uiSetRadius(_maxRadius);
           }
         });
@@ -301,18 +330,32 @@
               continue;
             }
             let position = vessel.navigation.position.value;
-            let distance = calculateDistance(position.latitude, position._currentCoordinates.lng, _currentCoordinates.lat, _currentCoordinates.lng);
+            let distance = calculateDistance(position.latitude, position.longitude, _currentCoordinates.lat, _currentCoordinates.lng);
             if (distance <= _filterRadius) {
               detectedVessels.push(vessel.mmsi);
               distance = Math.round(distance * 10) / 10;
+              //have we seen them already?
               if (vessel.mmsi in _vessels) {
+                console.log(`updating - ${vessel.name} / ${vessel.mmsi}`);
                 _vessels[vessel.mmsi].setLatLng([position.latitude, position.longitude]);
                 _vessels[vessel.mmsi]._popup.setContent(`${vessel.name} at ${distance} meters`);
+                if (_vesselTracks[vessel.mmsi])
+                  _vesselTracks[vessel.mmsi].addLatLng([position.latitude, position.longitude, _vesselTracks[vessel.mmsi].getLatLngs().length]);
               } else {
+                console.log(`new dancer - ${vessel.name} / ${vessel.mmsi}`);
                 _vessels[vessel.mmsi] = L.marker([position.latitude, position.longitude], {
                   icon: vesselIcon
                 });
                 _vessels[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
+                _vesselTracks[vessel.mmsi] = L.hotline([[position.latitude, position.longitude]], {
+                  color: 'red',
+                  weight: 1,
+                  min: 0,
+                  max: 1,
+                  palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
+                  outlineWidth: 0,
+                  text: ''
+                }).addTo(map);
               }
             }
           }
@@ -321,6 +364,8 @@
               console.log(`${mmsi} moved out of range`);
               map.removeLayer(_vessels[mmsi]);
               delete _vessels[mmsi];
+              map.removeLayer(_vesselTracks[mmsi]);
+              delete _vesselTracks[mmsi];
             }
           }
         });
@@ -549,6 +594,47 @@
         bearing = (bearing + 360) % 360;
 
         return bearing;
+      }
+
+      /**
+       * Calculates the destination point given starting latitude and longitude,
+       * bearing, and distance using the haversine formula.
+       *
+       * @param {number} lat1 - Starting latitude in degrees.
+       * @param {number} lon1 - Starting longitude in degrees.
+       * @param {number} bearing - Bearing in degrees (clockwise from north).
+       * @param {number} distance - Distance to travel from the starting point in meters.
+       * @returns {{ latitude: number, longitude: number }} - The destination latitude and longitude.
+       */
+      function calculateDestinationPoint(lat1, lon1, bearing, distance) {
+        const R = 6371e3; // Earth's radius in meters
+
+        // Convert input values to radians
+        const φ1 = (lat1 * Math.PI) / 180;
+        const λ1 = (lon1 * Math.PI) / 180;
+        const θ = (bearing * Math.PI) / 180;
+        const δ = distance / R; // Angular distance in radians
+
+        // Calculate destination coordinates
+        const sinφ1 = Math.sin(φ1);
+        const cosφ1 = Math.cos(φ1);
+        const sinδ = Math.sin(δ);
+        const cosδ = Math.cos(δ);
+        const sinθ = Math.sin(θ);
+        const cosθ = Math.cos(θ);
+
+        const sinφ2 = sinφ1 * cosδ + cosφ1 * sinδ * cosθ;
+        const φ2 = Math.asin(sinφ2);
+
+        const y = sinθ * sinδ * cosφ1;
+        const x = cosδ - sinφ1 * sinφ2;
+        const λ2 = λ1 + Math.atan2(y, x);
+
+        // Convert radians back to degrees
+        const lat2 = (φ2 * 180) / Math.PI;
+        const lon2 = ((λ2 * 180) / Math.PI + 540) % 360 - 180; // Normalize to [-180, +180]
+
+        return { latitude: lat2, longitude: lon2 };
       }
     </script>
 </body>

@@ -1,11 +1,15 @@
 # TODO:
 
-* also show other vessels and their path history within filterRadius.
-* implement a no position watchdog.
+* prepopulate anchor position when alarm off with point at heading + depth * 10 + gps distance from bow
+* implement a no position watchdog alarm
 * re-send dragging alarm every X minutes w/ new distance
-* experiment with dragging the anchor, instead of the map
+* add status text with current alarm status
 
-# DONE:
+# Long Term Ideas
+* add different icons for motor/sail/catamaran/trimaran
+* try changing to dragging anchor instead of map
+
+# v1.0
 
 * update leaflet and jquery
 * display high resolution history with paths plugin.
@@ -20,10 +24,14 @@
 * raise anchor on initial page load has a small bug with anchor location.
 * load wind / depth data on first call
 * web client tracks signalk state properly
-
 * remove / cleanup extra stuff in the module
   * rodeLength
   * manual setting
   * warning levels - should be a binary trigger
   * config settings
   * altitude in dropAnchor calls
+
+# v1.1
+
+* cleaned up global variables
+* also show other vessels and their path history within filterRadius.

@@ -22,7 +22,7 @@ module.exports = function (app) {
 
   plugin.id = "hoekens-anchor-alarm"
   plugin.name = "Hoeken's Anchor Alarm"
-  plugin.description = "Fork of signalk-anchoralarm-plugin with upgraded UI, historical tracks, and lazy mode engine state awareness."
+  plugin.description = "Fork of signalk-anchoralarm-plugin with upgraded UI, historical tracks, and lazy mode."
 
   plugin.schema = {
     title: "Hoeken's Anchor Alarm",
