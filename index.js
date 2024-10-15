@@ -85,6 +85,9 @@ module.exports = function (app) {
   let configuration;
 
   plugin.start = function (props) {
+
+    app.setPluginStatus("Started");
+
     configuration = props
     try {
       var isOn = configuration['on']
@@ -209,12 +212,16 @@ module.exports = function (app) {
     app.handleMessage(plugin.id, delta)
 
     stopWatchingPosition()
+
+    app.setPluginStatus("Stopped");
   }
 
   function stopWatchingPosition() {
     var delta = getAnchorAlarmDelta(app, "normal", "Anchor Alarm - Idle")
     app.handleMessage(plugin.id, delta)
     alarm_state = "normal"
+
+    app.setPluginStatus("Idle");
 
     onStop.forEach(f => f())
     onStop = []
@@ -227,6 +234,8 @@ module.exports = function (app) {
     var delta = getAnchorAlarmDelta(app, "normal", "Anchor Alarm - Watching")
     app.handleMessage(plugin.id, delta)
     alarm_state = "normal"
+
+    app.setPluginStatus("Watching");
 
     app.subscriptionmanager.subscribe(
       {
@@ -513,22 +522,23 @@ module.exports = function (app) {
     let message = "Anchor Alarm - OK";
 
     //compare our radius
-    if (radius != null) {
-      if (meters > radius) {
-        //okay, we're dragging.
-        new_state = configuration.state;
-        let meters_rounded = Math.round(meters);
-        message = `Anchor Alarm - Dragging (${meters_rounded}m)`;
+    if (radius != null && meters > radius) {
+      //okay, we're dragging.
+      new_state = configuration.state;
+      let meters_rounded = Math.round(meters);
+      message = `Anchor Alarm - Dragging (${meters_rounded}m)`;
 
-        //wait, do we have engines on?
-        if (configuration.enableEngineCheck) {
-          if (checkEngineState(app, plugin)) {
-            app.debug("alarm disabled due to engines on: %j", delta)
-            do_update = true;
-            new_state = "normal";
-            message = "Anchor Alarm - Disabled due to engine(s) on.";
-            raiseAnchor();
-          }
+      //wait, do we have engines on?
+      if (configuration.enableEngineCheck) {
+        if (checkEngineState(app, plugin)) {
+          app.debug("alarm disabled due to engines on: %j", delta)
+          do_update = true;
+          new_state = "normal";
+          message = "Anchor Alarm - Disabled due to engines on.";
+
+          raiseAnchor();
+
+          app.setPluginStatus("Disabled due to engines on.");
         }
       }
     }
@@ -539,6 +549,11 @@ module.exports = function (app) {
       app.handleMessage(plugin.id, delta)
 
       alarm_state = new_state;
+
+      if (alarm_state == "normal")
+        app.setPluginStatus("OK");
+      else
+        app.setPluginError("Dragging");
     }
   }
 
@@ -552,7 +567,7 @@ function checkEngineState(app, plugin) {
 
   console.log(propulsion);
 
-  if (propulsion != 'undefined') {
+  if (typeof propulsion !== 'undefined') {
     const propulsionKeys = Object.keys(propulsion);
 
     for (let key of propulsionKeys) {
@@ -582,16 +597,11 @@ function calc_distance(lat1, lon1, lat2, lon2) {
 }
 
 function getAnchorAlarmDelta(app, state, msg) {
-  if (!msg) {
+  if (!msg)
     msg = "Anchor Alarm - " + state.charAt(0).toUpperCase() + state.slice(1)
-  }
+
   let method = ["visual", "sound"]
-  const existing = app.getSelfPath('notifications.navigation.anchor.value')
-  console.log(existing);
-  app.debug('existing %j', existing)
-  if (existing && existing.state !== 'normal') {
-    method = existing.method
-  }
+
   var delta = {
     "updates": [
       {
