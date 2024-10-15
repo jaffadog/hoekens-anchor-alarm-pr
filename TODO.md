@@ -2,6 +2,7 @@
 
 * also show other vessels and their path history within filterRadius.
 * implement a no position watchdog.
+* re-send dragging alarm every X minutes w/ new distance
 * experiment with dragging the anchor, instead of the map
 
 # DONE:
