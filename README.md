@@ -25,10 +25,11 @@ The way I use this app is to anchor the boat first, then once I'm settled I will
 
 If you have engine data in SignalK (`propulsion.*.rpm` or `propulsion.*.state`) then you can enable the engine check functionality. Then, when you leave the anchorage under engine power, it will automatically end the anchor watch.  Additionally, if you are dragging anchor and you start your engines to reposition, it will also disable the anchor alarm.  When your anchor is dragging, it can sometimes be hectic. There's no reason to bombard you with alarms when you are aware of it and getting it sorted.
 
-This app pairs well with some other SignalK plugins:
+This app pairs well with some other software:
 
 * Node-RED + Pushbullet for push notifications to your phone.  Really great for when you're off the boat.
 * signalk-autostate - Simply by using the anchor app, the plugin can automatically determine the difference between moored and anchored.  You can then use this to automate things like an anchor light.
+* I highly recommend installing [Tailscale](https://tailscale.com/) on your devices.  It makes it sooooo easy to access things remotely and its both free and dead simple.
 
 # Attribution
 
