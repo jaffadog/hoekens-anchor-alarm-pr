@@ -76,8 +76,8 @@
       let anchorMarker;
       let anchorRadiusCircle;
 
-      let map = L.map('map', {
-      }).setView([-17.8414, 177.1827], 0);
+      let map;
+
       let boatIcon = L.icon({
         iconUrl: 'boat.png',
         iconSize: [24, 48], // size of the icon
@@ -119,7 +119,6 @@
         attribution: 'Map data from OpenStreetMap (OSM)',
         maxZoom: 23
       });
-      osmLayer.addTo(map);
 
       openSeaMapLayer = L.tileLayer('http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
         attribution: 'Map data from OpenSeaMap',
@@ -134,8 +133,6 @@
       let overlayMaps = {
         "OpenSeaMaps": openSeaMapLayer,
       };
-
-      let layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
 
       //this is our initial data lookup call.  Needs to happen first.
       $.get('/signalk/v1/api/vessels/self', (data) => {
@@ -166,6 +163,12 @@
 
         data = data.navigation;
         _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);;
+
+        map = L.map('map', {
+        }).setView(_currentCoordinates, 5);
+        osmLayer.addTo(map);
+
+        let layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
 
         let heading = data.headingTrue?.value;
         if (heading) {
@@ -289,21 +292,21 @@
         //update our depth
         $.get('/signalk/v1/api/vessels/self/environment/depth/belowTransducer/value', (depth) => {
           updateDepthUI(depth);
-        }).fail(() => {
+        }).fail((response) => {
           $('#depthValue').html("~");
         });
 
         //update wind speed.
         $.get('/signalk/v1/api/vessels/self/environment/wind/speedApparent/value', (speedApparent) => {
           updateWindSpeedUI(speedApparent);
-        }).fail(() => {
+        }).fail((response) => {
           $('#awsValue').html("~");
         });
 
         //update wind angle.
         $.get('/signalk/v1/api/vessels/self/environment/wind/directionTrue/value', (directionTrue) => {
           updateWindAngleUI(directionTrue);
-        }).fail(() => {
+        }).fail((response) => {
           $('#awaValue').html("~");
         });
 
@@ -384,10 +387,8 @@
           raiseAnchor(); //better UI response outside.
           $.post('/plugins/hoekens-anchor-alarm/raiseAnchor', () => { }).fail((response) => {
           }).fail((response) => {
-            //TODO: add error checking in case that fails.
-            if (response.status == 401) {
+            if (response.status == 401)
               location.href = "/admin/#/login";
-            }
           }).always(() => {
             _waitingForTheDrop = false;
           });
@@ -402,10 +403,8 @@
         let newPosition = { latitude: mc.lat, longitude: mc.lng };
         $.post('/plugins/hoekens-anchor-alarm/dropAnchor', { position: newPosition, radius: _maxRadius }, () => {
         }).fail((response) => {
-          //TODO: add error checking in case that fails.
-          if (response.status == 401) {
+          if (response.status == 401)
             location.href = "/admin/#/login";
-          }
         }).always(() => {
           _waitingForTheDrop = false;
         });
@@ -421,9 +420,14 @@
 
         if (_isAnchored) {
           _waitingForTheDrop = true;
-          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: newRadius }).always(() => {
-            _waitingForTheDrop = false;
-          });
+          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: newRadius })
+            .fail((response) => {
+              if (response.status == 401)
+                location.href = "/admin/#/login";
+            })
+            .always(() => {
+              _waitingForTheDrop = false;
+            });
         }
 
       });
@@ -434,9 +438,14 @@
 
         if (_isAnchored) {
           _waitingForTheDrop = true;
-          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: _maxRadius }).always(() => {
-            _waitingForTheDrop = false;
-          });
+          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: _maxRadius })
+            .fail((response) => {
+              if (response.status == 401)
+                location.href = "/admin/#/login";
+            })
+            .always(() => {
+              _waitingForTheDrop = false;
+            });
         }
       });
 
@@ -450,9 +459,14 @@
 
         if (_isAnchored) {
           _waitingForTheDrop = true;
-          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: _maxRadius }).always(() => {
-            _waitingForTheDrop = false;
-          });
+          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: _maxRadius })
+            .fail((response) => {
+              if (response.status == 401)
+                location.href = "/admin/#/login";
+            })
+            .always(() => {
+              _waitingForTheDrop = false;
+            });
         }
       });
 

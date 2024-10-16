@@ -11,6 +11,7 @@
 * preload icons
 * race condition ui bugfix
 * zoom to fit the anchor circle now
+* fixed login on set radius
 
 # v1.0
 
