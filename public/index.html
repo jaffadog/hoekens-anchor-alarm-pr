@@ -169,7 +169,7 @@
           heading = 0;
         }
 
-        zoom = 19;
+        zoom = 20;
         if (urlParams.has('zoom')) {
           zoom = urlParams.get('zoom');
         }
@@ -201,6 +201,7 @@
           let _anchorCoordinates = L.latLng(anchorPosition.latitude, anchorPosition.longitude);
           let radius = parseInt(data.anchor.maxRadius.value);
           dropAnchor(_anchorCoordinates, radius);
+          map.panTo(_anchorCoordinates);
         } else {
           let anchorPositionGuess = calculateDestinationPoint(_currentCoordinates.lat, _currentCoordinates.lng, heading, anchorDistanceGuess);
           _anchorCoordinates = L.latLng(anchorPositionGuess.latitude, anchorPositionGuess.longitude);
@@ -290,8 +291,9 @@
         //what is our current status?
         $.get('/signalk/v1/api/vessels/self/notifications/navigation/anchor', (alarm) => {
           $('#pluginStatus').html(alarm.value.message);
-          $('#pluginStatus').className = "";
-          $('#pluginStatus').addClass(alarm.value.state);
+          $('#pluginStatus').removeClass();
+          if (alarm.value.message != 'Off')
+            $('#pluginStatus').addClass(alarm.value.state);
         });
 
         //update our depth
@@ -324,7 +326,6 @@
           } else if (anchorStatus.state.value === "off" && _isAnchored) {
             raiseAnchor();
           }
-
         });
 
         //update any other vessels and their tracks.
@@ -382,6 +383,8 @@
         if (agree) {
           raiseAnchor(); //better UI response outside.
           $.post('/plugins/hoekens-anchor-alarm/raiseAnchor', () => { }).fail((response) => {
+            raiseAnchor(); //better UI response outside.
+          }).fail((response) => {
             //TODO: add error checking in case that fails.
             if (response.status == 401) {
               location.href = "/admin/#/login";
@@ -395,6 +398,7 @@
         dropAnchor(mc, _maxRadius); //better UI response outside.
         let newPosition = { latitude: mc.lat, longitude: mc.lng };
         $.post('/plugins/hoekens-anchor-alarm/dropAnchor', { position: newPosition, radius: _maxRadius }, () => {
+          dropAnchor(mc, _maxRadius); //do it again.
         }).fail((response) => {
           //TODO: add error checking in case that fails.
           if (response.status == 401) {
@@ -462,9 +466,9 @@
 
         map.removeLayer(crosshairMarker);
 
-        uiSetRadius(_maxRadius)
         anchorRadiusCircle.setLatLng(position);
-        anchorRadiusCircle.setStyle({ 'color': 'green' })
+        uiSetRadius(_maxRadius)
+
         anchorMarker = L.marker(position, {
           icon: anchorIcon
         }).addTo(map);
@@ -474,13 +478,12 @@
         if (typeof anchorMarker !== "undefined")
           map.removeLayer(anchorMarker);
 
-        //anchorRadiusCircle.setLatLng(map.getCenter());
-        anchorRadiusCircle.setStyle({ 'color': 'blue' })
-
         $('#anchorUp').show();
         $('#anchorDown').hide();
 
         _isAnchored = false;
+
+        uiSetRadiusColor();
 
         //put our center on the old anchor spot.
         map.panTo(_anchorCoordinates);
