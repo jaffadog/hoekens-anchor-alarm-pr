@@ -9,7 +9,8 @@
 * increased the max zoom
 * change to draggable anchor
 * preload icons
-
+* race condition ui bugfix
+* zoom to fit the anchor circle now
 
 # v1.0
 

@@ -69,6 +69,7 @@
       let _vesselTracks = {};
 
       let _isAnchored = false;
+      let _waitingForTheDrop = false;
 
       let boatMarker;
       let crosshairMarker;
@@ -76,7 +77,7 @@
       let anchorRadiusCircle;
 
       let map = L.map('map', {
-      }).setView([-17.8414, 177.1827], 5);
+      }).setView([-17.8414, 177.1827], 0);
       let boatIcon = L.icon({
         iconUrl: 'boat.png',
         iconSize: [24, 48], // size of the icon
@@ -173,12 +174,6 @@
           heading = 0;
         }
 
-        zoom = 20;
-        if (urlParams.has('zoom')) {
-          zoom = urlParams.get('zoom');
-        }
-        map.setView(_currentCoordinates, zoom);
-
         boatMarker = L.marker(_currentCoordinates, {
           rotationAngle: heading,
           icon: boatIcon
@@ -205,7 +200,6 @@
           let _anchorCoordinates = L.latLng(anchorPosition.latitude, anchorPosition.longitude);
           let radius = parseInt(data.anchor.maxRadius.value);
           dropAnchor(_anchorCoordinates, radius);
-          map.panTo(_anchorCoordinates);
         } else {
           let anchorPositionGuess = calculateDestinationPoint(_currentCoordinates.lat, _currentCoordinates.lng, heading, anchorDistanceGuess);
           _anchorCoordinates = L.latLng(anchorPositionGuess.latitude, anchorPositionGuess.longitude);
@@ -214,7 +208,9 @@
 
         updateAnchorLine(_currentCoordinates, _anchorCoordinates);
 
-        // $.get(`/signalk/v1/api/vessels/urn:mrn:imo:mmsi:${_mmsi}/track`, (data) => {
+        //zoom baby zoom.
+        map.fitBounds(anchorRadiusCircle.getBounds());
+
         $.get(`/signalk/v1/api/tracks?radius=${_filterRadius}`, (tracks) => {
           const mmsiRegex = /urn:mrn:imo:mmsi:(\d+)$/;
           for (uri in tracks) {
@@ -313,12 +309,21 @@
 
         //update our watch status
         $.get('/signalk/v1/api/vessels/self/navigation/anchor', (anchorStatus) => {
-          if (anchorStatus.state.value === "on" && !_isAnchored) {
-            _anchorCoordinates = L.latLng(anchorStatus.position.value.latitude, anchorStatus.position.value.longitude);
-            _maxRadius = anchorStatus.maxRadius.value;
-            dropAnchor(_anchorCoordinates, _maxRadius);
-          } else if (anchorStatus.state.value === "off" && _isAnchored) {
-            raiseAnchor();
+          if (!_waitingForTheDrop) {
+            if (anchorStatus.state.value === "on") {
+              _maxRadius = anchorStatus.maxRadius.value;
+              _anchorCoordinates = L.latLng(anchorStatus.position.value.latitude, anchorStatus.position.value.longitude);
+              uiSetRadius(_maxRadius);
+
+              //switch to anchored?
+              if (!_isAnchored) {
+                dropAnchor(_anchorCoordinates, _maxRadius);
+              }
+            }
+            //switch off anchored?
+            else if (_isAnchored) {
+              raiseAnchor();
+            }
           }
         });
 
@@ -375,6 +380,7 @@
       $('#raiseAnchor').click(() => {
         let agree = confirm('Do you really want to disable your anchor alarm?');
         if (agree) {
+          _waitingForTheDrop = true;
           raiseAnchor(); //better UI response outside.
           $.post('/plugins/hoekens-anchor-alarm/raiseAnchor', () => { }).fail((response) => {
           }).fail((response) => {
@@ -382,6 +388,8 @@
             if (response.status == 401) {
               location.href = "/admin/#/login";
             }
+          }).always(() => {
+            _waitingForTheDrop = false;
           });
         }
       });
@@ -389,6 +397,7 @@
       $('#dropAnchor').click(() => {
         //let mc = map.getCenter()
         let mc = crosshairMarker.getLatLng();
+        _waitingForTheDrop = true;
         dropAnchor(mc, _maxRadius); //better UI response outside.
         let newPosition = { latitude: mc.lat, longitude: mc.lng };
         $.post('/plugins/hoekens-anchor-alarm/dropAnchor', { position: newPosition, radius: _maxRadius }, () => {
@@ -397,6 +406,8 @@
           if (response.status == 401) {
             location.href = "/admin/#/login";
           }
+        }).always(() => {
+          _waitingForTheDrop = false;
         });
       });
 
@@ -408,15 +419,25 @@
         _maxRadius = newRadius;
         uiSetRadius(newRadius);
 
-        if (_isAnchored)
-          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: newRadius });
+        if (_isAnchored) {
+          _waitingForTheDrop = true;
+          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: newRadius }).always(() => {
+            _waitingForTheDrop = false;
+          });
+        }
+
       });
 
       $('#increaseRadius').click(() => {
         _maxRadius = parseInt(_maxRadius) + 5;
         uiSetRadius(_maxRadius);
-        if (_isAnchored)
-          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: _maxRadius });
+
+        if (_isAnchored) {
+          _waitingForTheDrop = true;
+          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: _maxRadius }).always(() => {
+            _waitingForTheDrop = false;
+          });
+        }
       });
 
       $('#decreaseRadius').click(() => {
@@ -426,8 +447,13 @@
 
         _maxRadius = _maxRadius - 5;
         uiSetRadius(_maxRadius)
-        if (_isAnchored)
-          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: _maxRadius });
+
+        if (_isAnchored) {
+          _waitingForTheDrop = true;
+          $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: _maxRadius }).always(() => {
+            _waitingForTheDrop = false;
+          });
+        }
       });
 
       function uiSetRadius(radius) {
