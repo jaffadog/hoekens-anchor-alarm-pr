@@ -210,16 +210,6 @@
 
         updateAnchorLine(_currentCoordinates, _anchorCoordinates);
 
-        map.on('move', function (ev) {
-          if (!_isAnchored) {
-            _anchorCoordinates = map.getCenter();
-            updateAnchorLine(_currentCoordinates, _anchorCoordinates);
-            crosshairMarker.setLatLng(map.getCenter());
-            anchorRadiusCircle.setLatLng(map.getCenter());
-            uiSetRadiusColor();
-          }
-        });
-
         // $.get(`/signalk/v1/api/vessels/urn:mrn:imo:mmsi:${_mmsi}/track`, (data) => {
         $.get(`/signalk/v1/api/tracks?radius=${_filterRadius}`, (tracks) => {
           const mmsiRegex = /urn:mrn:imo:mmsi:(\d+)$/;
@@ -383,7 +373,6 @@
         if (agree) {
           raiseAnchor(); //better UI response outside.
           $.post('/plugins/hoekens-anchor-alarm/raiseAnchor', () => { }).fail((response) => {
-            raiseAnchor(); //better UI response outside.
           }).fail((response) => {
             //TODO: add error checking in case that fails.
             if (response.status == 401) {
@@ -394,11 +383,11 @@
       });
 
       $('#dropAnchor').click(() => {
-        let mc = map.getCenter()
+        //let mc = map.getCenter()
+        let mc = crosshairMarker.getLatLng();
         dropAnchor(mc, _maxRadius); //better UI response outside.
         let newPosition = { latitude: mc.lat, longitude: mc.lng };
         $.post('/plugins/hoekens-anchor-alarm/dropAnchor', { position: newPosition, radius: _maxRadius }, () => {
-          dropAnchor(mc, _maxRadius); //do it again.
         }).fail((response) => {
           //TODO: add error checking in case that fails.
           if (response.status == 401) {
@@ -475,22 +464,29 @@
       }
 
       function raiseAnchor() {
-        if (typeof anchorMarker !== "undefined")
-          map.removeLayer(anchorMarker);
-
         $('#anchorUp').show();
         $('#anchorDown').hide();
 
         _isAnchored = false;
 
+        if (typeof anchorMarker != "undefined")
+          map.removeLayer(anchorMarker);
+
         uiSetRadiusColor();
 
-        //put our center on the old anchor spot.
-        map.panTo(_anchorCoordinates);
+        crosshairMarker = L.marker(_anchorCoordinates, {
+          icon: crosshairIcon,
+          draggable: true
+        }).addTo(map);
 
-        crosshairMarker = L.marker(map.getCenter(), {
-          icon: crosshairIcon
-        }).addTo(map)
+        crosshairMarker.on('drag', function (ev) {
+          if (!_isAnchored) {
+            _anchorCoordinates = crosshairMarker.getLatLng();
+            updateAnchorLine(_currentCoordinates, _anchorCoordinates);
+            anchorRadiusCircle.setLatLng(crosshairMarker.getLatLng());
+            uiSetRadiusColor();
+          }
+        });
 
         updateAnchorLine(_currentCoordinates, _anchorCoordinates);
       }
