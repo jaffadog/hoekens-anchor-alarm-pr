@@ -8,14 +8,20 @@ Some of the changes I've made:
 
 * Added historical tracks from the [@signalk/tracks-plugin](https://github.com/SignalK/tracks) plugin.
   * I recommend setting this to a resolution of 1000ms and 86400 points to keep.  This gives you high resolution data for the last 24 hours.  If you've got plenty of memory, you might as well use it.
-* Added colors to the historical tracks.  Green = new, fading to red = old.
-* Added a line to show distance and bearing to anchor.
-* Added wind speed / angle
-* Kept the old style UI with anchor placed at map center.
-* Removed distance to anchor from anchor radius UI
 * Added a check to prevent anchor alarm from firing when propulsion.*.rpm is > 0
   * I always forget to turn the anchor alarm off and it always goes off when I'm leaving the anchorage.
   * If you're truly dragging and you have your motor(s) on, then you know about it and you don't need another annoyance when you're dealing with it.
+* Lots and lots of UI improvements:
+  * Added colors to the historical tracks.  Green = new, fading to red = old.
+  * Added a line to show distance and bearing to anchor.
+  * Added wind speed / angle
+  * Added plugin status
+  * Changed UI to dragging anchor to set position instead of panning.
+  * Removed distance to anchor from anchor radius UI
+  * Added auto-guess when not anchored to speed up the anchor placement.
+  * Increased the max zoom
+  * Added other boats + their tracks
+  * More responsive UI
 
 # Usage
 
@@ -27,9 +33,9 @@ If you have engine data in SignalK (`propulsion.*.rpm` or `propulsion.*.state`) 
 
 This app pairs well with some other software:
 
-* Node-RED + Pushbullet for push notifications to your phone.  Really great for when you're off the boat.
+* Node-RED + Pushbullet for push notifications to your phone.  Really great for when you're off the boat.  Also works when you're on the boat to get an alarm on your phone.
 * signalk-autostate - Simply by using the anchor app, the plugin can automatically determine the difference between moored and anchored.  You can then use this to automate things like an anchor light.
-* I highly recommend installing [Tailscale](https://tailscale.com/) on your devices.  It makes it sooooo easy to access things remotely and its both free and dead simple.
+* I highly recommend installing [Tailscale](https://tailscale.com/) on your devices.  It makes it sooooo easy to access things SignalK and its both free and dead simple.
 
 # Attribution
 
