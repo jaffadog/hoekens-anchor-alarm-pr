@@ -39,15 +39,39 @@ button {
 
 .info {
   z-index: 99;
-  padding: 10px;
+  padding: 20px 10px;
   opacity: 1;
   border-radius: 5px;
-  text-align: left;
+  text-align: right;
   color: white;
 }
 
 .info button {
   font-size: 12pt;
+}
+
+.info th {
+  text-align: left;
+}
+
+.info td {
+  text-align: right;
+}
+
+.normal {
+  color: green;
+}
+
+.alarm {
+  color: yellow;
+}
+
+.warn {
+  color: orange;
+}
+
+.emergency {
+  color: red;
 }
 
 #anchorDown,

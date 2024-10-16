@@ -36,10 +36,23 @@
         <button id='increaseRadius'> + </button>
       </div>
     </div>
-    <div class="info leaflet-bottom leaflet-left">
-      <button id='depth'>Depth: <span id='depthValue'>~</span></button><br />
-      <button id='aws'>Wind: <span id='awsValue'>~</span> / <span id='awaValue'>~</span></button><br />
-      <button id='plugin'>Status: <span id='plugin_status'>Loading</span></button>
+    <div class="info leaflet-bottom leaflet-right">
+      <button>
+        <table>
+          <tr>
+            <th>Depth:</th>
+            <td><span id='depthValue'>~</span></td>
+          </tr>
+          <tr>
+            <th>Wind:</th>
+            <td><span id='awsValue'>~</span> / <span id='awaValue'>~</span></td>
+          </tr>
+          <tr>
+            <th>Status:</th>
+            <td><span id='pluginStatus'>Loading</span></td>
+          </tr>
+        </table>
+      </button>
     </div>
     <script>
 
@@ -276,7 +289,9 @@
 
         //what is our current status?
         $.get('/signalk/v1/api/vessels/self/notifications/navigation/anchor', (alarm) => {
-          $('#plugin_status').html(alarm.value.message);
+          $('#pluginStatus').html(alarm.value.message);
+          $('#pluginStatus').className = "";
+          $('#pluginStatus').addClass(alarm.value.state);
         });
 
         //update our depth
