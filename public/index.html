@@ -267,7 +267,7 @@
 
           let heading = data.headingTrue?.value;
           if (heading) {
-            heading = heading * 57.295779513; // Convert to degrees
+            heading = rad2deg(heading);
           } else {
             heading = 0;
           }
@@ -312,10 +312,6 @@
             raiseAnchor();
           }
 
-          if (typeof anchorStatus.maxRadius.value !== "undefined" && anchorStatus.maxRadius.value) {
-            _maxRadius = anchorStatus.maxRadius.value;
-            uiSetRadius(_maxRadius);
-          }
         });
 
         //update any other vessels and their tracks.
