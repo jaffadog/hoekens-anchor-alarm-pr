@@ -1,7 +1,6 @@
 # TODO:
 
 * implement a no position watchdog alarm
-* add status text with current alarm status
 
 # Long Term Ideas
 * add different icons for motor/sail/catamaran/trimaran
@@ -35,3 +34,4 @@
 * also show other vessels and their path history within filterRadius.
 * prepopulate anchor position with a guess based on heading, depth, and gps offset
 * re-send dragging alarm every X minutes w/ new distance
+* add status text with current alarm status

@@ -133,7 +133,7 @@ module.exports = function (app) {
         ]
       })
 
-      var delta = getAnchorAlarmDelta(app, "normal", "Anchor Alarm - Started")
+      var delta = getAnchorAlarmDelta(app, "normal", "Started")
       app.handleMessage(plugin.id, delta)
       alarm_state = "normal"
 
@@ -210,7 +210,7 @@ module.exports = function (app) {
 
   plugin.stop = function () {
     if (alarm_state != "normal") {
-      var delta = getAnchorAlarmDelta(app, "normal", "Anchor Alarm - Stopped")
+      var delta = getAnchorAlarmDelta(app, "normal", "Stopped")
       app.handleMessage(plugin.id, delta)
       alarm_state = "normal"
     }
@@ -223,7 +223,7 @@ module.exports = function (app) {
   }
 
   function stopWatchingPosition() {
-    var delta = getAnchorAlarmDelta(app, "normal", "Anchor Alarm - Idle")
+    var delta = getAnchorAlarmDelta(app, "normal", "Off")
     app.handleMessage(plugin.id, delta)
     alarm_state = "normal"
 
@@ -237,7 +237,7 @@ module.exports = function (app) {
     if (onStop.length > 0)
       return
 
-    var delta = getAnchorAlarmDelta(app, "normal", "Anchor Alarm - Watching")
+    var delta = getAnchorAlarmDelta(app, "normal", "Watching")
     app.handleMessage(plugin.id, delta)
     alarm_state = "normal"
 
@@ -525,14 +525,14 @@ module.exports = function (app) {
 
     let new_state = "normal";
     let do_update = false;
-    let message = "Anchor Alarm - OK";
+    let message = "OK";
 
     //compare our radius
     if (radius != null && meters > radius) {
       //okay, we're dragging.
       new_state = configuration.state;
       let meters_rounded = Math.round(meters);
-      message = `Anchor Alarm - Dragging (${meters_rounded}m)`;
+      message = `Anchor Dragging (${meters_rounded}m)`;
 
       //how often should we send it?
       let interval = configuration["anchorAlarmInterval"];
@@ -546,7 +546,7 @@ module.exports = function (app) {
           app.debug("alarm disabled due to engines on: %j", delta)
           do_update = true;
           new_state = "normal";
-          message = "Anchor Alarm - Disabled due to engines on.";
+          message = "Disabled due to engines on.";
 
           raiseAnchor();
 
@@ -608,7 +608,7 @@ function calc_distance(lat1, lon1, lat2, lon2) {
 
 function getAnchorAlarmDelta(app, state, msg) {
   if (!msg)
-    msg = "Anchor Alarm - " + state.charAt(0).toUpperCase() + state.slice(1)
+    msg = state.charAt(0).toUpperCase() + state.slice(1)
 
   let method = ["visual", "sound"]
 
