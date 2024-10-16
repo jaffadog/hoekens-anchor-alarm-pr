@@ -93,19 +93,19 @@
 
       satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-        maxZoom: 20
+        maxZoom: 23
       });
       //satelliteLayer.addTo(map);
 
       osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: 'Map data from OpenStreetMap (OSM)',
-        maxZoom: 20
+        maxZoom: 23
       });
       osmLayer.addTo(map);
 
       openSeaMapLayer = L.tileLayer('http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
         attribution: 'Map data from OpenSeaMap',
-        maxZoom: 20
+        maxZoom: 23
       });
 
       let baseMaps = {

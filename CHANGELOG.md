@@ -6,6 +6,7 @@
 * re-send dragging alarm every X minutes w/ new distance
 * add status text with current alarm status
 * implement a no position watchdog alarm
+* increased the max zoom
 
 # v1.0
 
