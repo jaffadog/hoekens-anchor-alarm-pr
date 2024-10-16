@@ -8,6 +8,7 @@
 * implement a no position watchdog alarm
 * increased the max zoom
 * change to draggable anchor
+* preload icons
 
 
 # v1.0
