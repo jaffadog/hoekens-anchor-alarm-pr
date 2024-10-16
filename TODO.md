@@ -1,7 +1,5 @@
 # TODO:
 
-* implement a no position watchdog alarm
-
 # Long Term Ideas
 * add different icons for motor/sail/catamaran/trimaran
 * try changing to dragging anchor instead of map
@@ -35,3 +33,4 @@
 * prepopulate anchor position with a guess based on heading, depth, and gps offset
 * re-send dragging alarm every X minutes w/ new distance
 * add status text with current alarm status
+* implement a no position watchdog alarm

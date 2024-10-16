@@ -53,7 +53,7 @@ module.exports = function (app) {
       noPositionAlarmTime: {
         type: "number",
         title: "Send a notification if no position is received for the given number of seconds",
-        default: 10
+        default: 60
       },
       on: {
         type: 'boolean',
@@ -89,10 +89,15 @@ module.exports = function (app) {
   let alarm_state;
   let configuration;
   let lastAlarmSent = 0;
+  let positionWatchdogTimer = false;
 
   plugin.start = function (props) {
 
     app.setPluginStatus("Started");
+
+    // var delta = getAnchorAlarmDelta(app, "normal", "Started")
+    // app.handleMessage(plugin.id, delta)
+    // alarm_state = "normal"
 
     configuration = props
     try {
@@ -104,6 +109,19 @@ module.exports = function (app) {
         && typeof position != 'undefined'
         && typeof radius != 'undefined') {
         startWatchingPosition()
+      }
+
+      //setup our watchdog timer
+      let noPositionAlarmTime = configuration["noPositionAlarmTime"];
+      if (typeof noPositionAlarmTime != 'undefined') {
+        if (noPositionAlarmTime > 0) {
+          positionWatchdogTimer = new Watchdog(noPositionAlarmTime * 1000, () => {
+            var delta = getAnchorAlarmDelta(app, "warn", `No position data received for ${noPositionAlarmTime} seconds.`);
+            app.debug("No position data - watchdog triggered.");
+            app.handleMessage(plugin.id, delta)
+          });
+          positionWatchdogTimer.start();
+        }
       }
 
       if (app.registerActionHandler) {
@@ -132,10 +150,6 @@ module.exports = function (app) {
           }
         ]
       })
-
-      var delta = getAnchorAlarmDelta(app, "normal", "Started")
-      app.handleMessage(plugin.id, delta)
-      alarm_state = "normal"
 
     } catch (e) {
       plugin.started = false
@@ -227,7 +241,7 @@ module.exports = function (app) {
     app.handleMessage(plugin.id, delta)
     alarm_state = "normal"
 
-    app.setPluginStatus("Idle");
+    app.setPluginStatus("Off");
 
     onStop.forEach(f => f())
     onStop = []
@@ -279,8 +293,11 @@ module.exports = function (app) {
           })
         }
 
-        if (position)
+        if (position) {
+          if (positionWatchdogTimer)
+            positionWatchdogTimer.reset();
           checkPosition(app, plugin, configuration.radius, position, configuration.position);
+        }
       }
     )
   }
@@ -525,7 +542,7 @@ module.exports = function (app) {
 
     let new_state = "normal";
     let do_update = false;
-    let message = "OK";
+    let message = "Watching";
 
     //compare our radius
     if (radius != null && meters > radius) {
@@ -546,11 +563,11 @@ module.exports = function (app) {
           app.debug("alarm disabled due to engines on: %j", delta)
           do_update = true;
           new_state = "normal";
-          message = "Disabled due to engines on.";
+          message = "Disabled due to engines on while dragging.";
 
           raiseAnchor();
 
-          app.setPluginStatus("Disabled due to engines on.");
+          app.setPluginStatus("Disabled due to engines on while dragging.");
         }
       }
     }
@@ -563,7 +580,7 @@ module.exports = function (app) {
       alarm_state = new_state;
 
       if (alarm_state == "normal")
-        app.setPluginStatus("OK");
+        app.setPluginStatus("Watching");
       else {
         lastAlarmSent = Date.now();
         app.setPluginError("Dragging");
@@ -640,4 +657,30 @@ function degsToRad(degrees) {
 
 function mod(x, y) {
   return x - y * Math.floor(x / y)
+}
+
+class Watchdog {
+  constructor(timeout, onTimeout) {
+    this.timeout = timeout;
+    this.onTimeout = onTimeout;
+    this.timer = null;
+  }
+
+  start() {
+    this.stop(); // Clear any existing timer
+    this.timer = setTimeout(() => {
+      this.onTimeout();
+    }, this.timeout);
+  }
+
+  reset() {
+    this.start(); // Restart the timer
+  }
+
+  stop() {
+    if (this.timer !== null) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+  }
 }
