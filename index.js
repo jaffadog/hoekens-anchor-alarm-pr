@@ -45,6 +45,11 @@ module.exports = function (app) {
         description: "Check propulsion.* to see if the engines are on before sending alarm notification.",
         default: true
       },
+      anchorAlarmInterval: {
+        type: "number",
+        title: "How often to send anchor alarm when dragging (in seconds).  Zero is continuously.",
+        default: 60
+      },
       noPositionAlarmTime: {
         type: "number",
         title: "Send a notification if no position is received for the given number of seconds",
@@ -83,6 +88,7 @@ module.exports = function (app) {
   let onStop = [];
   let alarm_state;
   let configuration;
+  let lastAlarmSent = 0;
 
   plugin.start = function (props) {
 
@@ -155,14 +161,14 @@ module.exports = function (app) {
           values: [
             {
               path: "navigation.anchor.maxRadius",
-              value: value
+              value: parseFloat(value)
             }
           ]
         }
       ]
     })
 
-    configuration["radius"] = value
+    configuration["radius"] = parseFloat(value)
     if (configuration["position"]) {
       configuration["on"] = true
       startWatchingPosition()
@@ -185,9 +191,9 @@ module.exports = function (app) {
         var delta = getAnchorDelta(app, null, value, null, configuration["radius"], true, null);
         app.handleMessage(plugin.id, delta)
 
-        configuration["position"] = { "latitude": value.latitude, "longitude": value.longitude }
+        configuration["position"] = { "latitude": parseFloat(value.latitude), "longitude": parseFloat(value.longitude) }
 
-        configuration["radius"] = value.radius
+        configuration["radius"] = parseFloat(value.radius)
         if (configuration["radius"]) {
           configuration["on"] = true
           startWatchingPosition()
@@ -319,10 +325,10 @@ module.exports = function (app) {
         //app.debug("anchor delta: " + JSON.stringify(delta))
 
         configuration["position"] = {
-          "latitude": position.latitude,
-          "longitude": position.longitude
+          "latitude": parseFloat(position.latitude),
+          "longitude": parseFloat(position.longitude)
         }
-        configuration["radius"] = radius
+        configuration["radius"] = parseFloat(radius)
         configuration["on"] = true
 
         startWatchingPosition()
@@ -376,7 +382,7 @@ module.exports = function (app) {
           radius, false, null);
         app.handleMessage(plugin.id, delta)
 
-        configuration["radius"] = radius
+        configuration["radius"] = parseFloat(radius)
 
         try {
           savePluginOptions()
@@ -443,7 +449,7 @@ module.exports = function (app) {
       if (currentRadius != null) {
         values.push({
           path: 'navigation.anchor.currentRadius',
-          value: currentRadius
+          value: parseFloat(currentRadius)
         })
       }
 
@@ -528,6 +534,12 @@ module.exports = function (app) {
       let meters_rounded = Math.round(meters);
       message = `Anchor Alarm - Dragging (${meters_rounded}m)`;
 
+      //how often should we send it?
+      let interval = configuration["anchorAlarmInterval"];
+      if (typeof interval !== "undefined")
+        if ((lastAlarmSent + interval * 1000) < Date.now())
+          do_update = true;
+
       //wait, do we have engines on?
       if (configuration.enableEngineCheck) {
         if (checkEngineState(app, plugin)) {
@@ -552,8 +564,10 @@ module.exports = function (app) {
 
       if (alarm_state == "normal")
         app.setPluginStatus("OK");
-      else
+      else {
+        lastAlarmSent = Date.now();
         app.setPluginError("Dragging");
+      }
     }
   }
 
@@ -561,11 +575,7 @@ module.exports = function (app) {
 }
 
 function checkEngineState(app, plugin) {
-  app.debug("in checkEngineState");
-
   propulsion = app.getSelfPath('propulsion');
-
-  console.log(propulsion);
 
   if (typeof propulsion !== 'undefined') {
     const propulsionKeys = Object.keys(propulsion);

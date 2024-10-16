@@ -1,8 +1,6 @@
 # TODO:
 
-* prepopulate anchor position when alarm off with point at heading + depth * 10 + gps distance from bow
 * implement a no position watchdog alarm
-* re-send dragging alarm every X minutes w/ new distance
 * add status text with current alarm status
 
 # Long Term Ideas
@@ -35,3 +33,5 @@
 
 * cleaned up global variables
 * also show other vessels and their path history within filterRadius.
+* prepopulate anchor position with a guess based on heading, depth, and gps offset
+* re-send dragging alarm every X minutes w/ new distance
