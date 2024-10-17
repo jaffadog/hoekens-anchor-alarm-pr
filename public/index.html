@@ -179,11 +179,11 @@
           // calculate how many meters each pixel represents
           var MeterPerPixel = maxMeters / x;
 
-          console.log(`MeterPerPixel: ${MeterPerPixel}`);
+          //console.log(`MeterPerPixel: ${MeterPerPixel}`);
 
           pixelsX = 8.3 / MeterPerPixel;
           pixelsY = 16 / MeterPerPixel;
-          console.log(`x: ${pixelsX}, ${pixelsY}`);
+          //console.log(`x: ${pixelsX}, ${pixelsY}`);
         });
 
         osmLayer.addTo(map);
@@ -373,14 +373,15 @@
               if (vessel.mmsi in _vessels) {
                 _vessels[vessel.mmsi].setLatLng([position.latitude, position.longitude]);
                 _vessels[vessel.mmsi]._popup.setContent(`${vessel.name} at ${distance} meters`);
-                if (_vesselTracks[vessel.mmsi])
+                if (_vesselTracks[vessel.mmsi]) {
                   _vesselTracks[vessel.mmsi].addLatLng([position.latitude, position.longitude, _vesselTracks[vessel.mmsi].getLatLngs().length]);
+                }
               } else {
                 _vessels[vessel.mmsi] = L.marker([position.latitude, position.longitude], {
                   icon: vesselIcon
                 });
                 _vessels[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
-                _vesselTracks[vessel.mmsi] = L.hotline([[position.latitude, position.longitude]], {
+                _vesselTracks[vessel.mmsi] = L.hotline([[position.latitude, position.longitude, 0]], {
                   color: 'red',
                   weight: 1,
                   min: 0,

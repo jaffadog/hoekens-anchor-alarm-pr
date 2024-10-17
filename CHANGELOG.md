@@ -1,3 +1,8 @@
+# v1.1.1
+
+* fixed bug where position watchdog triggers when anchor alarm turned off
+* fixed an error with other vessels historical tracks
+
 # v1.1
 
 * cleaned up global variables

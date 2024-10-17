@@ -101,6 +101,20 @@ module.exports = function (app) {
 
     configuration = props
     try {
+
+      //setup our watchdog timer
+      let noPositionAlarmTime = configuration["noPositionAlarmTime"];
+      if (typeof noPositionAlarmTime != 'undefined') {
+        if (noPositionAlarmTime > 0) {
+          positionWatchdogTimer = new Watchdog(noPositionAlarmTime * 1000, () => {
+            var delta = getAnchorAlarmDelta(app, "warn", `No position data received for ${noPositionAlarmTime} seconds.`);
+            app.handleMessage(plugin.id, delta)
+          });
+        }
+      }
+
+
+
       var isOn = configuration['on']
       var position = configuration['position']
       var radius = configuration['radius']
@@ -109,19 +123,6 @@ module.exports = function (app) {
         && typeof position != 'undefined'
         && typeof radius != 'undefined') {
         startWatchingPosition()
-      }
-
-      //setup our watchdog timer
-      let noPositionAlarmTime = configuration["noPositionAlarmTime"];
-      if (typeof noPositionAlarmTime != 'undefined') {
-        if (noPositionAlarmTime > 0) {
-          positionWatchdogTimer = new Watchdog(noPositionAlarmTime * 1000, () => {
-            var delta = getAnchorAlarmDelta(app, "warn", `No position data received for ${noPositionAlarmTime} seconds.`);
-            app.debug("No position data - watchdog triggered.");
-            app.handleMessage(plugin.id, delta)
-          });
-          positionWatchdogTimer.start();
-        }
       }
 
       if (app.registerActionHandler) {
@@ -236,17 +237,6 @@ module.exports = function (app) {
     app.setPluginStatus("Stopped");
   }
 
-  function stopWatchingPosition() {
-    var delta = getAnchorAlarmDelta(app, "normal", "Off")
-    app.handleMessage(plugin.id, delta)
-    alarm_state = "normal"
-
-    app.setPluginStatus("Off");
-
-    onStop.forEach(f => f())
-    onStop = []
-  }
-
   function startWatchingPosition() {
     if (onStop.length > 0)
       return
@@ -256,6 +246,9 @@ module.exports = function (app) {
     alarm_state = "normal"
 
     app.setPluginStatus("Watching");
+
+    if (positionWatchdogTimer)
+      positionWatchdogTimer.start();
 
     app.subscriptionmanager.subscribe(
       {
@@ -300,6 +293,20 @@ module.exports = function (app) {
         }
       }
     )
+  }
+
+  function stopWatchingPosition() {
+    var delta = getAnchorAlarmDelta(app, "normal", "Off")
+    app.handleMessage(plugin.id, delta)
+    alarm_state = "normal"
+
+    if (positionWatchdogTimer)
+      positionWatchdogTimer.stop();
+
+    app.setPluginStatus("Off");
+
+    onStop.forEach(f => f())
+    onStop = []
   }
 
   function raiseAnchor() {
