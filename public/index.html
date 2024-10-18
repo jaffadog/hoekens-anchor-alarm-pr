@@ -371,20 +371,38 @@
             if (!("navigation" in vessel) || !("position" in vessel.navigation)) {
               continue;
             }
+
+            //try to figure out where they are pointing
+            let vessel_heading = 0;
+            if (typeof vessel.navigation?.headingTrue?.value !== "undefined")
+              vessel_heading = rad2deg(vessel.navigation.headingTrue.value);
+            else if (typeof vessel.navigation?.courseOverGroundTrue?.value !== "undefined")
+              vessel_heading = rad2deg(vessel.navigation.courseOverGroundTrue.value);
+
+            //where are they?
             let position = vessel.navigation.position.value;
             let distance = calculateDistance(position.latitude, position.longitude, _currentCoordinates.lat, _currentCoordinates.lng);
+
+            //only show vessels in our radius
             if (distance <= _filterRadius) {
               detectedVessels.push(vessel.mmsi);
               distance = Math.round(distance * 10) / 10;
+
               //have we seen them already?
               if (vessel.mmsi in _vessels) {
                 _vessels[vessel.mmsi].setLatLng([position.latitude, position.longitude]);
+                _vessels[vessel.mmsi].setRotationAngle(vessel_heading);
                 _vessels[vessel.mmsi]._popup.setContent(`${vessel.name} at ${distance} meters`);
+
+                //do we have a track for them?
                 if (_vesselTracks[vessel.mmsi]) {
                   _vesselTracks[vessel.mmsi].addLatLng([position.latitude, position.longitude, _vesselTracks[vessel.mmsi].getLatLngs().length]);
                 }
+                //nope, create their info
               } else {
                 _vessels[vessel.mmsi] = L.marker([position.latitude, position.longitude], {
+                  rotationAngle: vessel_heading,
+                  rotationOrigin: "center center",
                   icon: vesselIcon
                 });
                 _vessels[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
