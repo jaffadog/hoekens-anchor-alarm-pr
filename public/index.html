@@ -69,6 +69,8 @@
       let _vessels = {};
       let _vesselTracks = {};
 
+      let _twa = false;
+
       let _boatLOA = 0;
       let _boatBeam = 0;
       let _gpsBowYDistance = 0;
@@ -163,8 +165,10 @@
 
         if (typeof data.environment.depth?.belowTransducer?.value !== "undefined")
           updateDepthUI(data.environment.depth.belowTransducer.value);
-        if (typeof data.environment.wind?.directionTrue?.value !== "undefined")
-          updateWindAngleUI(data.environment.wind.directionTrue.value);
+        if (typeof data.environment.wind?.directionTrue?.value !== "undefined") {
+          _twa = rad2deg(data.environment.wind.directionTrue.value);
+          updateWindAngleUI(_twa);
+        }
         if (typeof data.environment.wind?.speedApparent?.value !== "undefined")
           updateWindSpeedUI(data.environment.wind.speedApparent.value);
 
@@ -334,6 +338,7 @@
 
         //update wind angle.
         $.get('/signalk/v1/api/vessels/self/environment/wind/directionTrue/value', (directionTrue) => {
+          _twa = rad2deg(directionTrue);
           updateWindAngleUI(directionTrue);
         }).fail((response) => {
           $('#awaValue').html("~");
@@ -373,10 +378,12 @@
 
             //try to figure out where they are pointing
             let vessel_heading = 0;
-            if (typeof vessel.navigation?.headingTrue?.value !== "undefined")
-              vessel_heading = rad2deg(vessel.navigation.headingTrue.value);
-            else if (typeof vessel.navigation?.courseOverGroundTrue?.value !== "undefined")
-              vessel_heading = rad2deg(vessel.navigation.courseOverGroundTrue.value);
+            if (_twa !== false)
+              vessel_heading = _twa;
+            // else if (typeof vessel.navigation?.headingTrue?.value !== "undefined")
+            //   vessel_heading = rad2deg(vessel.navigation.headingTrue.value);
+            // else if (typeof vessel.navigation?.courseOverGroundTrue?.value !== "undefined")
+            //   vessel_heading = rad2deg(vessel.navigation.courseOverGroundTrue.value);
 
             //where are they?
             let position = vessel.navigation.position.value;
