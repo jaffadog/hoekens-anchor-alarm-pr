@@ -1,7 +1,9 @@
-# v1.1.1
+# v1.2
 
 * fixed bug where position watchdog triggers when anchor alarm turned off
 * fixed an error with other vessels historical tracks
+* other vessels headings now parsed from AIS
+* fix to properly display new track points loaded while page is open
 
 # v1.1
 

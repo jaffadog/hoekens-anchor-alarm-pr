@@ -171,7 +171,6 @@
         //save our parameters for boat size + gps position
         if (data.design?.length?.value !== "undefined") {
           _boatLOA = parseFloat(data.design.length.value.overall);
-          console.log(data.design.length.value.overall);
         }
         if (data.design?.beam?.value !== "undefined")
           _boatBeam = parseFloat(data.design.beam?.value);
@@ -179,8 +178,6 @@
           _gpsBowYDistance += data.sensors.gps.fromBow.value;
         if (typeof data.sensors?.gps?.fromCenter?.value !== "undefined")
           _gpsBowXDistance += data.sensors.gps.fromCenter.value;
-        console.log(`loa: ${_boatLOA}, beam: ${_boatBeam}`);
-        console.log(`gps offset: ${_gpsBowXDistance}, ${_gpsBowYDistance}`);
 
         data = data.navigation;
         _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);;
@@ -305,8 +302,10 @@
           boatMarker.setLatLng(_currentCoordinates);
           boatMarker.setRotationAngle(heading);
 
-          if (_vesselTracks[_mmsi])
+          if (_vesselTracks[_mmsi]) {
             _vesselTracks[_mmsi].addLatLng([_currentCoordinates.lat, _currentCoordinates.lng, _vesselTracks[_mmsi].getLatLngs().length]);
+            _vesselTracks[_mmsi].options.max++;
+          }
 
           updateAnchorLine(_currentCoordinates, _anchorCoordinates);
         });
@@ -386,7 +385,7 @@
             //only show vessels in our radius
             if (distance <= _filterRadius) {
               detectedVessels.push(vessel.mmsi);
-              distance = Math.round(distance * 10) / 10;
+              distance = Math.round(distance);
 
               //have we seen them already?
               if (vessel.mmsi in _vessels) {
@@ -396,7 +395,11 @@
 
                 //do we have a track for them?
                 if (_vesselTracks[vessel.mmsi]) {
-                  _vesselTracks[vessel.mmsi].addLatLng([position.latitude, position.longitude, _vesselTracks[vessel.mmsi].getLatLngs().length]);
+                  let lastPosition = _vesselTracks[vessel.mmsi].getLatLngs().at(-1);
+                  if (lastPosition && (lastPosition.lat != position.latitude || lastPosition.lng != position.longitude)) {
+                    _vesselTracks[vessel.mmsi].addLatLng([position.latitude, position.longitude, _vesselTracks[vessel.mmsi].options.max]);
+                    _vesselTracks[vessel.mmsi].options.max++;
+                  }
                 }
                 //nope, create their info
               } else {
@@ -406,15 +409,19 @@
                   icon: vesselIcon
                 });
                 _vessels[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
-                _vesselTracks[vessel.mmsi] = L.hotline([[position.latitude, position.longitude, 0]], {
-                  color: 'red',
-                  weight: 1,
-                  min: 0,
-                  max: 1,
-                  palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
-                  outlineWidth: 0,
-                  text: ''
-                }).addTo(map);
+
+                //make sure we didnt load their track already.
+                if (vessel.mmsi in _vesselTracks === false) {
+                  _vesselTracks[vessel.mmsi] = L.hotline([[position.latitude, position.longitude, 0]], {
+                    color: 'red',
+                    weight: 1,
+                    min: 0,
+                    max: 1,
+                    palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
+                    outlineWidth: 0,
+                    text: ''
+                  }).addTo(map);
+                }
               }
             }
           }
@@ -681,7 +688,7 @@
         gpsYPosition = Math.max(0, gpsYPosition);
         gpsYPosition = Math.min(pixelsY, gpsYPosition);
 
-        console.log(`gps pixel position: ${gpsXPosition}, ${gpsYPosition}`);
+        //console.log(`gps pixel position: ${gpsXPosition}, ${gpsYPosition}`);
 
         return L.icon({
           iconUrl: 'boat.png',
