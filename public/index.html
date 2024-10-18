@@ -11,10 +11,10 @@
   <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
   <link rel="manifest" href="site.webmanifest">
 
-  <link rel="preload" href="boat.png" as="image">
-  <link rel="preload" href="catamaran.png" as="image">
-  <link rel="preload" href="anchor.png" as="image">
-  <link rel="preload" href="crosshair.png" as="image">
+  <link rel="preload" href="icons/boat.png" as="image">
+  <link rel="preload" href="icons/catamaran.png" as="image">
+  <link rel="preload" href="icons/anchor.png" as="image">
+  <link rel="preload" href="icons/crosshair.png" as="image">
 
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="leaflet/leaflet.css" />
@@ -87,25 +87,25 @@
       let map;
 
       let boatIcon = L.icon({
-        iconUrl: 'boat.png',
+        iconUrl: 'icons/boat.png',
         iconSize: [24, 48], // size of the icon
         iconAnchor: [12, 24], // point of the icon which will correspond to marker's location
       });
 
       let anchorIcon = L.icon({
-        iconUrl: 'anchor.png',
+        iconUrl: 'icons/anchor.png',
         iconSize: [24, 24], // size of the icon
         iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
       });
 
       let vesselIcon = L.icon({
-        iconUrl: 'boat.png',
+        iconUrl: 'icons/boat.png',
         iconSize: [24, 48], // size of the icon
         iconAnchor: [6, 12], // point of the icon which will correspond to marker's location
       });
 
       let crosshairIcon = L.icon({
-        iconUrl: 'crosshair.png',
+        iconUrl: 'icons/crosshair.png',
         iconSize: [24, 24], // size of the icon
         iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
       });
@@ -701,7 +701,7 @@
         //console.log(`gps pixel position: ${gpsXPosition}, ${gpsYPosition}`);
 
         return L.icon({
-          iconUrl: 'boat.png',
+          iconUrl: 'icons/boat.png',
           iconSize: [pixelsX, pixelsY], // size of the icon
           iconAnchor: [gpsXPosition, gpsYPosition], // point of the icon which will correspond to marker's location
         });
