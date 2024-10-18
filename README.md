@@ -44,6 +44,8 @@ In order to take advantage of the extra features, make sure your SignalK is setu
 * `propulsion.*.rpm` or `propulsion.*.state` - used to determine if engines are on or not (optional)
 * `design.length` and `design.beam` - for future use with accurate size icons
 
+## Recommendations
+
 This app pairs well with some other software:
 
 * Node-RED + Pushbullet for push notifications to your phone.  Really great for when you're off the boat.  Also works when you're on the boat to get an alarm on your phone.
