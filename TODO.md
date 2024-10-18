@@ -1,8 +1,6 @@
-# v1.2 features
-
-* 
 # Long Term Ideas
 
+* dynamic icon size and rotation point based on internal variables
 * add different icons based on boat type
   * design.aisShipType: https://api.vtexplorer.com/docs/ref-aistypes.html
   * catamaran vs mono based length/beam ratio

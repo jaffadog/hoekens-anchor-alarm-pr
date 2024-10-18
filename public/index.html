@@ -189,11 +189,6 @@
         map = L.map('map', {
         }).setView(_currentCoordinates, 5);
 
-        //function to check the scale of the map.
-        map.on("move", () => {
-          createBoatMarkerIcon(_boatLOA, _boatBeam, _gpsBowXDistance, _gpsBowYDistance);
-        });
-
         osmLayer.addTo(map);
 
         let layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
@@ -206,6 +201,19 @@
         } else {
           heading = 0;
         }
+        _heading = heading;
+
+        //redo our markers when zoom changes.
+        // map.on("zoomend", () => {
+        //   //clear our old one...
+        //   if (boatMarker) {
+        //     map.removeLayer(boatMarker);
+        //     delete boatMarker;
+        //   }
+        //   createBoatMarker(_boatLOA, _boatBeam, _gpsBowXDistance, _gpsBowYDistance, _heading);
+        // });
+
+        //boatMarker = createBoatMarker(_boatLOA, _boatBeam, _gpsBowXDistance, _gpsBowYDistance, _heading);
 
         boatMarker = L.marker(_currentCoordinates, {
           rotationAngle: heading,
@@ -302,6 +310,7 @@
           } else {
             heading = 0;
           }
+          _heading = heading;
 
           boatMarker.setLatLng(_currentCoordinates);
           boatMarker.setRotationAngle(heading);
@@ -666,7 +675,7 @@
 
       }
 
-      function createBoatMarkerIcon(loa, beam, gps_x_offset, gps_y_offset) {
+      function createBoatMarker(loa, beam, gps_x_offset, gps_y_offset, heading) {
         // Get the y,x dimensions of the map
         let y = map.getSize().y;
         let x = map.getSize().x;
@@ -700,11 +709,18 @@
 
         //console.log(`gps pixel position: ${gpsXPosition}, ${gpsYPosition}`);
 
-        return L.icon({
+        //our icon with custom size and anchor position
+        let icon = L.icon({
           iconUrl: 'icons/boat.png',
           iconSize: [pixelsX, pixelsY], // size of the icon
           iconAnchor: [gpsXPosition, gpsYPosition], // point of the icon which will correspond to marker's location
         });
+
+        return L.marker(_currentCoordinates, {
+          rotationAngle: heading,
+          rotationOrigin: `${pixelsX}px ${pixelsY}px`,
+          icon: icon
+        }).addTo(map)
       }
 
       function calculateDistance(lat1, lon1, lat2, lon2) {
