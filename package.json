@@ -1,7 +1,7 @@
 {
   "name": "hoekens-anchor-alarm",
-  "version": "1.1.0",
-  "description": "Fork of signalk-anchoralarm-plugin with upgraded UI, historical tracks, and lazy mode.",
+  "version": "1.1.2",
+  "description": "Fork of signalk-anchoralarm-plugin with upgraded UI, etch-a-sketch tracks, and engine override.",
   "main": "index.js",
   "scripts": {
     "test": "$NODE $npm_package_main",

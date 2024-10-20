@@ -22,7 +22,7 @@ module.exports = function (app) {
 
   plugin.id = "hoekens-anchor-alarm"
   plugin.name = "Hoeken's Anchor Alarm"
-  plugin.description = "Fork of signalk-anchoralarm-plugin with upgraded UI, historical tracks, and lazy mode."
+  plugin.description = "Fork of signalk-anchoralarm-plugin with upgraded UI, etch-a-sketch tracks, and engine override."
 
   plugin.schema = {
     title: "Hoeken's Anchor Alarm",
@@ -41,7 +41,7 @@ module.exports = function (app) {
       },
       enableEngineCheck: {
         type: 'boolean',
-        title: 'Engine check before alarm',
+        title: 'Engine Override Enabled',
         description: "Check propulsion.* to see if the engines are on before sending alarm notification.",
         default: true
       },
@@ -112,8 +112,6 @@ module.exports = function (app) {
           });
         }
       }
-
-
 
       var isOn = configuration['on']
       var position = configuration['position']
@@ -567,14 +565,14 @@ module.exports = function (app) {
       //wait, do we have engines on?
       if (configuration.enableEngineCheck) {
         if (checkEngineState(app, plugin)) {
-          app.debug("alarm disabled due to engines on: %j", delta)
+          app.debug("anchor alarm disabled due to engines on: %j", delta)
           do_update = true;
           new_state = "normal";
-          message = "Disabled due to engines on while dragging.";
+          message = "Engine Override: Alarm off.";
 
           raiseAnchor();
 
-          app.setPluginStatus("Disabled due to engines on while dragging.");
+          app.setPluginStatus(message);
         }
       }
     }
