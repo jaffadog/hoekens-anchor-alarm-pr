@@ -129,19 +129,19 @@
         maxZoom: 23
       });
 
-      openSeaMapLayer = L.tileLayer('http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
-        attribution: 'Map data from OpenSeaMap',
-        maxZoom: 23
-      });
+      // openSeaMapLayer = L.tileLayer('http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+      //   attribution: 'Map data from OpenSeaMap',
+      //   maxZoom: 23
+      // });
 
       let baseMaps = {
         "OpenStreetMap": osmLayer,
         "Satellite": satelliteLayer
       };
 
-      let overlayMaps = {
-        "OpenSeaMaps": openSeaMapLayer,
-      };
+      // let overlayMaps = {
+      //   "OpenSeaMaps": openSeaMapLayer,
+      // };
 
       //this is our initial data lookup call.  Needs to happen first.
       $.get('/signalk/v1/api/vessels/self', (data) => {
@@ -191,7 +191,8 @@
 
         osmLayer.addTo(map);
 
-        let layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+//        let layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+        let layerControl = L.control.layers(baseMaps).addTo(map);
 
         L.control.scale().addTo(map);
 
