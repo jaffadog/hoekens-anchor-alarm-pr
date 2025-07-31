@@ -58,6 +58,7 @@
       let _boatBeam = 0;
       let _gpsBowYDistance = 0;
       let _gpsBowXDistance = 0;
+      let _gpsBowDistance = 0;
 
       let _isAnchored = false;
       let _waitingForTheDrop = false;
@@ -203,6 +204,8 @@
           _gpsBowYDistance = data.sensors.gps.fromBow.value;
         if (typeof data.sensors?.gps?.fromCenter?.value !== "undefined")
           _gpsBowXDistance = data.sensors.gps.fromCenter.value;
+
+        _gpsBowDistance = calculateVectorDistance(_gpsBowXDistance, _gpsBowYDistance);
 
         data = data.navigation;
         _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);;
@@ -710,15 +713,19 @@
       }
 
       function updateAnchorLine(current, anchor) {
-        anchorLine.setLatLngs([current, anchor]);
-        anchorLineAngle.setLatLngs([current, anchor]); // this duplicate on is so we can have 2 text labels
+
+        let _bc = calculateDestinationPoint(current.lat, current.lng, _heading, _gpsBowDistance);
+        let _bowCoordinates = L.latLng(_bc.latitude, _bc.longitude);
+
+        anchorLine.setLatLngs([_bowCoordinates, anchor]);
+        anchorLineAngle.setLatLngs([_bowCoordinates, anchor]); // this duplicate on is so we can have 2 text labels
 
         //this will fail if you're anchored exactly on the equator, lol.
         let flip = false;
-        if (current.lng > anchor.lng)
+        if (_bowCoordinates.lng > anchor.lng)
           flip = true;
 
-        let distance = calculateDistance(current.lat, current.lng, anchor.lat, anchor.lng);
+        let distance = calculateDistance(_bowCoordinates.lat, _bowCoordinates.lng, anchor.lat, anchor.lng);
         distance = Math.round(distance * 10) / 10;
 
         anchorLine.setText("");
@@ -731,7 +738,7 @@
           }
         });
 
-        const bearing = Math.round(calculateBearing(current.lat, current.lng, anchor.lat, anchor.lng));
+        const bearing = Math.round(calculateBearing(_bowCoordinates.lat, _bowCoordinates.lng, anchor.lat, anchor.lng));
 
         anchorLineAngle.setText("");
         anchorLineAngle.setText(`${bearing}°`, {
@@ -801,6 +808,8 @@
        * @returns {{ latitude: number, longitude: number }} - The destination latitude and longitude.
        */
       function calculateDestinationPoint(lat1, lon1, bearing, distance) {
+
+        console.log(`lat: ${lat1}, lon: ${lon1}, bearing: ${bearing}, distance: ${distance}`);
         const R = 6371e3; // Earth's radius in meters
 
         // Convert input values to radians
@@ -829,6 +838,16 @@
         const lon2 = ((λ2 * 180) / Math.PI + 540) % 360 - 180; // Normalize to [-180, +180]
 
         return { latitude: lat2, longitude: lon2 };
+      }
+
+      /**
+       * Returns the length of the vector (x, y) from the origin.
+       * @param {number} x – x-coordinate
+       * @param {number} y – y-coordinate
+       * @returns {number} distance from (0,0) to (x,y)
+       */
+      function calculateVectorDistance(x, y) {
+        return Math.sqrt(x * x + y * y);
       }
     </script>
 </body>
