@@ -1,6 +1,6 @@
-# Long Term Ideas
+#v1.3
 
-* dynamic icon size and rotation point based on internal variables
+* dynamic icon size and rotation point based on internal variables (boat width, height, gps antenna location)
 * add different icons based on boat type
   * design.aisShipType: https://api.vtexplorer.com/docs/ref-aistypes.html
   * catamaran vs mono based length/beam ratio
@@ -22,6 +22,3 @@
     * cargo ship
     * tanker ship
     * ???
-
-* drag circle to resize?
-* add an alarm if someone is dragging towards us?
