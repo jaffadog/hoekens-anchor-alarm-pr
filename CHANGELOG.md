@@ -1,5 +1,6 @@
 #v1.3
 
+* add a table to bottom right with various scope suggestions based on depth + bow height above water + tidal delta
 * plugin is now gps antenna location aware.  this makes calculation of the anchor bearing and distance more accurate.
 * added depthBelowSurface
 * fixed a bug when loading app and circle isnt over anchor target

@@ -48,13 +48,23 @@ button {
 }
 
 
-.info th {
+.info th,
+.scope th {
   text-align: left;
 }
 
-.info td {
+.info td,
+.scope td {
   width: 100%;
   text-align: right;
+}
+
+.scope {
+  padding: 5px;
+  width: 180px;
+  font-size: 11pt;
+  line-height: 1.1;
+  background-color: white;
 }
 
 .normal {

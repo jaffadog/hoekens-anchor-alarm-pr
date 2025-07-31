@@ -1,8 +1,9 @@
 #v1.3
 
-* add options for antenna offset to plugin config
-* add options for depthsounder offset to plugin config
-* add a table to bottom right with various scopes based on depth + bow height above water (add option in config)
+* add option for anchor roller height offset to plugin config
+* add option for antenna offset to plugin config
+* add option for depthsounder offset to plugin config
+* investigate how to get tide delta via other signalk plugin
 
 * add different icons based on boat type
   * design.aisShipType: https://api.vtexplorer.com/docs/ref-aistypes.html
