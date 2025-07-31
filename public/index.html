@@ -215,7 +215,7 @@
         _gpsBowDistance = calculateVectorDistance(_gpsBowXDistance, _gpsBowYDistance);
 
         data = data.navigation;
-        _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);;
+        _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);
 
         map = L.map('map', {
           zoomControl: false,
@@ -727,7 +727,21 @@
 
       function updateAnchorLine(current, anchor) {
 
-        let _bc = calculateDestinationPoint(current.lat, current.lng, _heading, _gpsBowDistance);
+        //first do our Y along our heading.
+        let _bc = calculateDestinationPoint(current.lat, current.lng, _heading, _gpsBowYDistance);
+
+        //then do our X at 90 degrees.
+        if (_gpsBowXDistance != 0) {
+          let _heading2 = _heading;
+          if (_gpsBowXDistance > 0)
+            _heading2 = _heading + 90;
+          else if (_gpsBowXDistance < 0)
+            _heading2 = _heading - 90;
+          _heading2 = normalizeAngle(_heading2);
+          _bc = calculateDestinationPoint(_bc.latitude, _bc.longitude, _heading2, _gpsBowXDistance);
+        }
+
+        //okay use the new bow coordinates
         let _bowCoordinates = L.latLng(_bc.latitude, _bc.longitude);
 
         anchorLine.setLatLngs([_bowCoordinates, anchor]);
@@ -861,6 +875,10 @@
        */
       function calculateVectorDistance(x, y) {
         return Math.sqrt(x * x + y * y);
+      }
+
+      function normalizeAngle(angle) {
+        return ((angle % 360) + 360) % 360;
       }
     </script>
 </body>
