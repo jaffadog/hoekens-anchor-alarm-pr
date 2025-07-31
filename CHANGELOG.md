@@ -1,5 +1,6 @@
 #v1.3
 
+* plugin is now gps antenna location aware.  this makes calculation of the anchor bearing and distance more accurate.
 * added depthBelowSurface
 * fixed a bug when loading app and circle isnt over anchor target
 * radius guess is now a multiple of 5
