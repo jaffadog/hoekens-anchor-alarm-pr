@@ -1,5 +1,7 @@
 #v1.3
 
+* add options for antenna offset to plugin config
+* add options for depthsounder offset to plugin config
 * add a table to bottom right with various scopes based on depth + bow height above water (add option in config)
 
 * add different icons based on boat type
