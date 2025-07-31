@@ -65,6 +65,7 @@
 
       let myBoatMarker;
       let crosshairMarker;
+      let gpsCrosshairMarker;
       let anchorMarker;
       let anchorRadiusCircle;
 
@@ -96,6 +97,12 @@
 
       crosshairMarker = L.marker({
         icon: crosshairIcon
+      });
+
+      let gpsCrosshairIcon = L.icon({
+        iconUrl: 'icons/crosshair-plus-dot.png',
+        iconSize: [24, 24], // size of the icon
+        iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
       });
 
       let anchorLine;
@@ -253,6 +260,10 @@
           icon: 'icons/boat.svg'
         }).addTo(map)
 
+        gpsCrosshairMarker = L.marker(_currentCoordinates, {
+          icon: gpsCrosshairIcon
+        }).addTo(map);
+
         anchorRadiusCircle = L.circle(map.getCenter(), _maxRadius, { color: 'green' });
         anchorRadiusCircle.addTo(map)
         uiSetRadius(_maxRadius)
@@ -346,6 +357,8 @@
 
           myBoatMarker.setLatLng(_currentCoordinates);
           myBoatMarker.setHeading(heading);
+
+          gpsCrosshairMarker.setLatLng(_currentCoordinates);
 
           if (_vesselTracks[_mmsi]) {
             _vesselTracks[_mmsi].addLatLng([_currentCoordinates.lat, _currentCoordinates.lng, _vesselTracks[_mmsi].getLatLngs().length]);
