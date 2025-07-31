@@ -1,6 +1,8 @@
 body {
   padding: 0;
   margin: 0;
+  font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+  font-size: 0.75rem;
 }
 
 html,
@@ -38,18 +40,13 @@ button {
 }
 
 .info {
-  z-index: 99;
-  padding: 24px 10px;
-  opacity: 1;
-  border-radius: 5px;
-  text-align: right;
-  color: white;
+  padding: 5px;
+  width: 160px;
+  font-size: 11pt;
+  line-height: 1.1;
+  background-color: white;
 }
 
-.info button {
-  width: 180px;
-  font-size: 12pt;
-}
 
 .info th {
   text-align: left;

@@ -41,24 +41,6 @@
         <button id='increaseRadius'> + </button>
       </div>
     </div>
-    <div class="info leaflet-bottom leaflet-right">
-      <button>
-        <table>
-          <tr>
-            <th>Depth:</th>
-            <td><span id='depthValue'>~</span></td>
-          </tr>
-          <tr>
-            <th>Wind:</th>
-            <td><span id='awsValue'>~</span> / <span id='awaValue'>~</span></td>
-          </tr>
-          <tr>
-            <th>Status:</th>
-            <td><span id='pluginStatus'>Loading</span></td>
-          </tr>
-        </table>
-      </button>
-    </div>
     <script>
 
       let _currentCoordinates;
@@ -121,28 +103,58 @@
 
       satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-        maxZoom: 23
+        maxZoom: 23,
+        maxNativeZoom: 17,      // Highest zoom level Esri has real imagery for
+        tileSize: 256,
+        noWrap: true,
+        keepBuffer: 5
       });
 
       osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: 'Map data from OpenStreetMap (OSM)',
         maxZoom: 23
       });
-
-      // openSeaMapLayer = L.tileLayer('http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
-      //   attribution: 'Map data from OpenSeaMap',
-      //   maxZoom: 23
-      // });
-
+      
       let baseMaps = {
         "OpenStreetMap": osmLayer,
         "Satellite": satelliteLayer
       };
+      
+      // Define the info box control
+      const InfoBoxControl = L.Control.extend({
+        options: {
+          position: 'bottomright' // 'topleft', 'topright', 'bottomleft', 'bottomright'
+        },
 
-      // let overlayMaps = {
-      //   "OpenSeaMaps": openSeaMapLayer,
-      // };
+        onAdd: function (map) {
+          // Create a container div with a class
+          const container = L.DomUtil.create('div', 'info leaflet-bar');
 
+          // Prevent events from being propagated to the map
+          L.DomEvent.disableClickPropagation(container);
+
+          container.innerHTML = `
+              <table>
+                <tr>
+                  <th>Depth:</th>
+                  <td><span id='depthValue'>~</span></td>
+                </tr>
+                <tr>
+                  <th>Wind:</th>
+                  <td><span id='awsValue'>~</span> / <span id='awaValue'>~</span></td>
+                </tr>
+                <tr>
+                  <th>Status:</th>
+                  <td><span id='pluginStatus'>Loading</span></td>
+                </tr>
+              </table>
+          `;
+          
+
+          return container;
+        }
+      });
+      
       //this is our initial data lookup call.  Needs to happen first.
       $.get('/signalk/v1/api/vessels/self', (data) => {
         _mmsi = data.mmsi;
@@ -187,14 +199,31 @@
         _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);;
 
         map = L.map('map', {
+          zoomControl: false,
+          //attributionControl: false
         }).setView(_currentCoordinates, 5);
 
-        osmLayer.addTo(map);
+        satelliteLayer.addTo(map);
+        //osmLayer.addTo(map);
 
-//        let layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
-        let layerControl = L.control.layers(baseMaps).addTo(map);
+        L.control.scale({
+                position: 'topleft' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+            }).addTo(map);
+        
+        L.control.zoom({
+                position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+            }).addTo(map);
 
-        L.control.scale().addTo(map);
+        // Infobox for status
+        const infoBox = new InfoBoxControl();
+        map.addControl(infoBox);            
+        
+        let layerControl = L.control.layers(baseMaps, {}, {
+                position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+        }).addTo(map);
+        
+        //bu
+        //L.control.attribution({ position: 'bottomleft' }).addTo(map);
 
         let heading = data.headingTrue?.value;
         if (heading) {

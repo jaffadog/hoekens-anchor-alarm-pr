@@ -568,7 +568,7 @@ module.exports = function (app) {
           app.debug("anchor alarm disabled due to engines on: %j", delta)
           do_update = true;
           new_state = "normal";
-          message = "Engine Override: Alarm off.";
+          message = "Engines on, alarm disabled.";
 
           raiseAnchor();
 

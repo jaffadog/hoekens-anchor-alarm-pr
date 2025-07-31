@@ -1,4 +1,11 @@
-# v1.2
+#v1.2
+
+* removed openseamaps layer
+* updated UI positions for one hand use on mobile
+* fixed zoom issues with satellite imagery
+* now defaults to satellite imagery layers
+
+# v1.1.2
 
 * fixed bug where position watchdog triggers when anchor alarm turned off
 * fixed an error with other vessels historical tracks
