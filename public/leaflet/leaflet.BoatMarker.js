@@ -40,12 +40,6 @@ L.BoatMarker = L.Marker.extend({
   setHeading(deg) {
     this.options.heading = deg;
 
-    // // grab Leaflet’s own translate3d(...) string…
-    // const t = this._icon.style[L.DomUtil.TRANSFORM];
-
-    // // …and tack on your rotate
-    // this._icon.style[L.DomUtil.TRANSFORM] = `${t} rotate(${this.options.heading}deg)`;
-
     // now rotate just the image
     const img = this._icon.querySelector('img');
     if (img)
