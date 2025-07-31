@@ -11,7 +11,7 @@ L.BoatMarker = L.Marker.extend({
   initialize(latlng, options) {
     L.Util.setOptions(this, options);
 
-    // console.log(`loa: ${options.loa} beam: ${options.beam} gpsOffset: ${options.gpsOffset.x}, ${options.gpsOffset.y}`);
+    //console.log(`loa: ${options.loa} beam: ${options.beam} gpsOffset: ${options.gpsOffset.x}, ${options.gpsOffset.y}`);
 
     // Build a tiny DivIcon; we'll size it dynamically later
     const icon = L.divIcon({
