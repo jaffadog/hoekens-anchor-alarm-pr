@@ -161,6 +161,7 @@
               </table>
           `;
 
+          container.id = "infoUI";
 
           return container;
         }
@@ -169,7 +170,7 @@
       // Define the info box control
       const ScopeBoxControl = L.Control.extend({
         options: {
-          position: 'bottomleft' // 'topleft', 'topright', 'bottomleft', 'bottomright'
+          position: 'bottomright' // 'topleft', 'topright', 'bottomleft', 'bottomright'
         },
 
         onAdd: function (map) {
@@ -183,12 +184,6 @@
           container.innerHTML = `
               <table>
                 <tr>
-                  <th colspan="2">Scope Calcs</th>
-                </tr>
-                <tr>
-                  <th colspan="2">&nbsp;</th>
-                </tr>
-                <tr>
                   <th>Water&nbsp;Depth</th>
                   <td><span id='scopeDepth'>~</span></td>
                 </tr>
@@ -197,7 +192,7 @@
                   <td>+ <span id='bowHeight'>~</span></td>
                 </tr>
                 <tr>
-                  <th>Tide&nbsp;Delta</th>
+                  <th>Tidal&nbsp;Rise</th>
                   <td>+ <span id='tideDelta'>~</span></td>
                 </tr>
                 <tr>
@@ -208,19 +203,19 @@
                   <th colspan="2">&nbsp;</th>
                 </tr>
                 <tr>
-                  <th>7:1</th>
+                  <th>7:1&nbspScope</th>
                   <td><span id='scope7to1'>~</span></td>
                 </tr>
                 <tr>
-                  <th>5:1</th>
+                  <th>5:1&nbspScope</th>
                   <td><span id='scope5to1'>~</span></td>
                 </tr>
                 <tr>
-                  <th>4:1</th>
+                  <th>4:1&nbspScope</th>
                   <td><span id='scope4to1'>~</span></td>
                 </tr>
                 <tr>
-                  <th>3:1</th>
+                  <th>3:1&nbspScope</th>
                   <td><span id='scope3to1'>~</span></td>
                 </tr>
               </table>
@@ -279,6 +274,17 @@
           _gpsBowXDistance = data.sensors.gps.fromCenter.value;
 
         _gpsBowDistance = calculateVectorDistance(_gpsBowXDistance, _gpsBowYDistance);
+
+        //this is our initial data lookup call.  Needs to happen first.
+        $.get('/signalk/v1/api/vessels/self/environment/tide', (data) => {
+          if (typeof data.heightHigh?.value !== "undefined" &&
+            typeof data.heightLow?.value !== "undefined" &&
+            typeof data.timeHigh?.value !== "undefined" &&
+            typeof data.timeLow?.value !== "undefined"
+          ) {
+            _tideDelta = estimateTideHeightSmooth(data.timeLow.value, data.heightLow.value, data.timeHigh.value, data.heightHigh.value);
+          }
+        });
 
         data = data.navigation;
         _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);
@@ -716,6 +722,7 @@
         _isAnchored = true;
 
         $('#scopeUI').hide();
+        $('#infoUI').show();
 
         _maxRadius = parseInt(radius);
         if (_maxRadius <= 0)
@@ -737,6 +744,7 @@
 
         _isAnchored = false;
 
+        $('#infoUI').hide();
         $('#scopeUI').show();
 
         if (typeof anchorMarker != "undefined")
@@ -793,22 +801,22 @@
         maxHeight += _tideDelta;
 
         scope = maxHeight * 7;
-        scope = Math.round(scope * 2) / 2;
+        //scope = Math.round(scope * 2) / 2;
         scope = scope.toFixed(1);
         $('#scope7to1').html(`${scope}m`);
 
         scope = maxHeight * 5;
-        scope = Math.round(scope * 2) / 2;
+        //scope = Math.round(scope * 2) / 2;
         scope = scope.toFixed(1);
         $('#scope5to1').html(`${scope}m`);
 
         scope = maxHeight * 4;
-        scope = Math.round(scope * 2) / 2;
+        //scope = Math.round(scope * 2) / 2;
         scope = scope.toFixed(1);
         $('#scope4to1').html(`${scope}m`);
 
         scope = maxHeight * 3;
-        scope = Math.round(scope * 2) / 2;
+        //scope = Math.round(scope * 2) / 2;
         scope = scope.toFixed(1);
         $('#scope3to1').html(`${scope}m`);
 
@@ -1000,6 +1008,49 @@
 
       function normalizeAngle(angle) {
         return ((angle % 360) + 360) % 360;
+      }
+
+      /**
+       * Estimate current tide height with sinusoidal easing
+       *
+       * @param {Date|string|number} lowTime      — time of low tide
+       * @param {number}            lowHeight    — height at low tide
+       * @param {Date|string|number} highTime     — time of high tide
+       * @param {number}            highHeight   — height at high tide
+       * @param {Date|string|number} [currentTime=new Date()] — time to estimate
+       * @returns {number} smoothly interpolated tide height
+       */
+      function estimateTideHeightSmooth(lowTime, lowHeight, highTime, highHeight, currentTime = new Date()) {
+        // normalize inputs to UTC timestamps
+        const tLow = (lowTime instanceof Date ? lowTime : new Date(lowTime)).getTime();
+        const tHigh = (highTime instanceof Date ? highTime : new Date(highTime)).getTime();
+        const tCurrent = (currentTime instanceof Date ? currentTime : new Date(currentTime)).getTime();
+
+        let t0, h0, t1, h1;
+
+        // determine rising vs falling tide
+        if (tLow < tHigh) {
+          // rising: low → high
+          if (tCurrent <= tLow) return lowHeight;
+          if (tCurrent >= tHigh) return highHeight;
+          t0 = tLow; h0 = lowHeight;
+          t1 = tHigh; h1 = highHeight;
+        } else {
+          // falling: high → low
+          if (tCurrent <= tHigh) return highHeight;
+          if (tCurrent >= tLow) return lowHeight;
+          t0 = tHigh; h0 = highHeight;
+          t1 = tLow; h1 = lowHeight;
+        }
+
+        // fraction through the tide interval [0…1]
+        const frac = (tCurrent - t0) / (t1 - t0);
+
+        // sinusoidal easing: starts slow, speeds up, then slows into the end
+        const sineFrac = (1 - Math.cos(Math.PI * frac)) / 2;
+
+        // interpolated height
+        return h0 + (h1 - h0) * sineFrac;
       }
     </script>
 </body>
