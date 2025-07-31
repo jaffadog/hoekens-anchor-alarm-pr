@@ -115,12 +115,12 @@
         attribution: 'Map data from OpenStreetMap (OSM)',
         maxZoom: 23
       });
-      
+
       let baseMaps = {
         "OpenStreetMap": osmLayer,
         "Satellite": satelliteLayer
       };
-      
+
       // Define the info box control
       const InfoBoxControl = L.Control.extend({
         options: {
@@ -150,12 +150,12 @@
                 </tr>
               </table>
           `;
-          
+
 
           return container;
         }
       });
-      
+
       //this is our initial data lookup call.  Needs to happen first.
       $.get('/signalk/v1/api/vessels/self', (data) => {
         _mmsi = data.mmsi;
@@ -216,21 +216,21 @@
         //osmLayer.addTo(map);
 
         L.control.scale({
-                position: 'topleft' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
-            }).addTo(map);
-        
+          position: 'topleft' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+        }).addTo(map);
+
         L.control.zoom({
-                position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
-            }).addTo(map);
+          position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+        }).addTo(map);
 
         // Infobox for status
         const infoBox = new InfoBoxControl();
-        map.addControl(infoBox);            
-        
+        map.addControl(infoBox);
+
         let layerControl = L.control.layers(baseMaps, {}, {
-                position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+          position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
         }).addTo(map);
-        
+
         //bu
         //L.control.attribution({ position: 'bottomleft' }).addTo(map);
 
@@ -274,13 +274,16 @@
         //   icon: boatIcon
         // }).addTo(map)
 
-          myBoatMarker = new L.BoatMarker(_currentCoordinates, {
-            beam: _boatBeam,
-            loa: _boatLOA,
-            gpsOffset: {x: _gpsBowXDistance, y: _gpsBowYDistance},
-            heading: heading,
-            icon: 'icons/boat.svg'
-          }).addTo(map)
+        //calculate the x offset from the left side, not center
+        let xOffset = _boatBeam - (_boatBeam / 2 - _gpsBowXDistance);
+
+        myBoatMarker = new L.BoatMarker(_currentCoordinates, {
+          beam: _boatBeam,
+          loa: _boatLOA,
+          gpsOffset: { x: xOffset, y: _gpsBowYDistance },
+          heading: heading,
+          icon: 'icons/boat.svg'
+        }).addTo(map)
 
         anchorRadiusCircle = L.circle(map.getCenter(), _maxRadius, { color: 'green' });
         anchorRadiusCircle.addTo(map)
@@ -397,9 +400,9 @@
           let belowSurface;
           let belowKeel;
           if (data.hasOwnProperty('belowSurface'))
-            belowSurface = data.belowSurface.value; 
+            belowSurface = data.belowSurface.value;
           if (data.hasOwnProperty('belowKeel'))
-            belowKeel = data.belowKeel.value; 
+            belowKeel = data.belowKeel.value;
 
           updateDepthUI(belowSurface, belowKeel);
         }).fail((response) => {
@@ -494,7 +497,7 @@
                 _vessels[vessel.mmsi] = new L.BoatMarker([position.latitude, position.longitude], {
                   beam: 8,
                   loa: 15,
-                  gpsOffset: {x: 0, y: 0},
+                  gpsOffset: { x: 0, y: 0 },
                   heading: vessel_heading,
                   icon: 'icons/boat.svg'
                   //icon: vesselIcon
@@ -678,7 +681,7 @@
             uiSetRadiusColor();
           }
         });
-        
+
         anchorRadiusCircle.setLatLng(_anchorCoordinates);
 
         updateAnchorLine(_currentCoordinates, _anchorCoordinates);
@@ -686,7 +689,7 @@
 
       function updateDepthUI(dbs, dbk) {
         let output;
-        
+
         if (typeof dbs !== "undefined")
           dbs = Math.round(dbs * 10) / 10;
         else
@@ -697,7 +700,7 @@
         else
           dbk = '~'
 
-          $('#belowSurface').html(`${dbs}m`);
+        $('#belowSurface').html(`${dbs}m`);
         $('#belowKeel').html(`${dbk}m`);
       }
 
