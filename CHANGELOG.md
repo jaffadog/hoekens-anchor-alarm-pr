@@ -1,3 +1,9 @@
+#v1.3
+
+* added depthBelowSurface
+* fixed a bug when loading app and circle isnt over anchor target
+* radius guess is now a multiple of 5
+
 #v1.2
 
 * removed openseamaps layer

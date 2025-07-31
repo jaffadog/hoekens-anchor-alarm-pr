@@ -137,7 +137,7 @@
               <table>
                 <tr>
                   <th>Depth:</th>
-                  <td><span id='depthValue'>~</span></td>
+                  <td><span id='belowSurface'>~</span> / <span id='belowKeel'>~</span></td>
                 </tr>
                 <tr>
                   <th>Wind:</th>
@@ -163,8 +163,8 @@
         let anchorDistanceGuess = 0;
 
         //default to 5x scope
-        if (typeof data.environment.depth?.belowTransducer?.value !== "undefined")
-          anchorDistanceGuess += data.environment.depth.belowTransducer.value * 5;
+        if (typeof data.environment.depth?.belowSurface?.value !== "undefined")
+          anchorDistanceGuess += data.environment.depth.belowSurface.value * 5;
 
         //add in our gps offset
         if (typeof data.sensors?.gps?.fromBow?.value !== "undefined")
@@ -172,11 +172,20 @@
 
         //our radius defaults.
         _maxRadius = Math.round(parseInt(anchorDistanceGuess * 1.5));
+        _maxRadius = Math.round(_maxRadius / 5) * 5; //multiples of 5
         _maxRadius = Math.max(0, _maxRadius);
-        _maxRadius = Math.min(150, _maxRadius);
+        _maxRadius = Math.min(200, _maxRadius);
 
-        if (typeof data.environment.depth?.belowTransducer?.value !== "undefined")
-          updateDepthUI(data.environment.depth.belowTransducer.value);
+        //a couple different depths
+        let belowKeel;
+        let belowSurface;
+        if (typeof data.environment.depth?.belowKeel?.value !== "undefined")
+          belowKeel = data.environment.depth.belowKeel.value;
+        if (typeof data.environment.depth?.belowSurface?.value !== "undefined")
+          belowSurface = data.environment.depth.belowSurface.value;
+        updateDepthUI(belowSurface, belowKeel);
+
+        //wind info.
         if (typeof data.environment.wind?.directionTrue?.value !== "undefined") {
           _twa = rad2deg(data.environment.wind.directionTrue.value);
           updateWindAngleUI(_twa);
@@ -362,10 +371,18 @@
         });
 
         //update our depth
-        $.get('/signalk/v1/api/vessels/self/environment/depth/belowTransducer/value', (depth) => {
-          updateDepthUI(depth);
+        $.get('/signalk/v1/api/vessels/self/environment/depth', (data) => {
+          let belowSurface;
+          let belowKeel;
+          if (data.hasOwnProperty('belowSurface'))
+            belowSurface = data.belowSurface.value; 
+          if (data.hasOwnProperty('belowKeel'))
+            belowKeel = data.belowKeel.value; 
+
+          updateDepthUI(belowSurface, belowKeel);
         }).fail((response) => {
-          $('#depthValue').html("~");
+          $('#belowSurface').html("~");
+          $('#belowKeel').html("~");
         });
 
         //update wind speed.
@@ -636,17 +653,27 @@
             uiSetRadiusColor();
           }
         });
+        
+        anchorRadiusCircle.setLatLng(_anchorCoordinates);
 
         updateAnchorLine(_currentCoordinates, _anchorCoordinates);
       }
 
-      function updateDepthUI(depth) {
-        if (typeof depth !== "undefined") {
-          depth = Math.round(depth * 10) / 10;
-          $('#depthValue').html(`${depth}m`);
-        } else {
-          $('#depthValue').html('~');
-        }
+      function updateDepthUI(dbs, dbk) {
+        let output;
+        
+        if (typeof dbs !== "undefined")
+          dbs = Math.round(dbs * 10) / 10;
+        else
+          dbs = '~'
+
+        if (typeof dbk !== "undefined")
+          dbk = Math.round(dbk * 10) / 10;
+        else
+          dbk = '~'
+
+          $('#belowSurface').html(`${dbs}m`);
+        $('#belowKeel').html(`${dbk}m`);
       }
 
       function updateWindSpeedUI(speedApparent) {
