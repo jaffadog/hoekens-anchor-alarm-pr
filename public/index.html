@@ -20,7 +20,8 @@
   <link rel="stylesheet" href="leaflet/leaflet.css" />
   <script src="jquery-3.7.1.min.js"></script>
   <script src="leaflet/leaflet.js"></script>
-  <script src="leaflet/leaflet.rotatedMarker.js"></script>
+  <!-- <script src="leaflet/leaflet.rotatedMarker.js"></script> -->
+  <script src="leaflet/leaflet.BoatMarker.js"></script>
   <script src="leaflet/leaflet.hotline.js"></script>
   <script src="leaflet/leaflet.textpath.js"></script>
 </head>
@@ -61,7 +62,7 @@
       let _isAnchored = false;
       let _waitingForTheDrop = false;
 
-      let boatMarker;
+      let myBoatMarker;
       let crosshairMarker;
       let anchorMarker;
       let anchorRadiusCircle;
@@ -194,9 +195,8 @@
           updateWindSpeedUI(data.environment.wind.speedApparent.value);
 
         //save our parameters for boat size + gps position
-        if (data.design?.length?.value !== "undefined") {
+        if (data.design?.length?.value !== "undefined")
           _boatLOA = parseFloat(data.design.length.value.overall);
-        }
         if (data.design?.beam?.value !== "undefined")
           _boatBeam = parseFloat(data.design.beam?.value);
         if (typeof data.sensors?.gps?.fromBow?.value !== "undefined")
@@ -254,11 +254,33 @@
 
         //boatMarker = createBoatMarker(_boatLOA, _boatBeam, _gpsBowXDistance, _gpsBowYDistance, _heading);
 
-        boatMarker = L.marker(_currentCoordinates, {
-          rotationAngle: heading,
-          rotationOrigin: "center center",
-          icon: boatIcon
-        }).addTo(map)
+        // //default the rotation X to bow.
+        // let _rotationOriginX = 50;
+        // if (_boatBeam > 0)
+        //   _rotationOriginX = 50 + Math.min(Math.round(100 * _gpsBowXDistance / (_boatBeam/2)), 100);
+        //
+        // console.log(`50 + Math.min(Math.round(100 * ${_gpsBowXDistance} / (${_boatBeam}/2)), 100)`)
+        //
+        // //default rotation Y to centerline.
+        // let _rotationOriginY = 0;
+        // if (_boatLOA > 0)
+        //   _rotationOriginY = Math.min(Math.round(100 * _gpsBowYDistance / _boatLOA), 100);
+        //
+        // console.log(`${_rotationOriginX}% ${_rotationOriginY}%`);
+
+        // boatMarker = L.marker(_currentCoordinates, {
+        //   rotationAngle: heading,
+        //   rotationOrigin: `${_rotationOriginX}% ${_rotationOriginY}%`,
+        //   icon: boatIcon
+        // }).addTo(map)
+
+          myBoatMarker = new L.BoatMarker(_currentCoordinates, {
+            beam: _boatBeam,
+            loa: _boatLOA,
+            gpsOffset: {x: _gpsBowXDistance, y: _gpsBowYDistance},
+            heading: heading,
+            icon: 'icons/boat.svg'
+          }).addTo(map)
 
         anchorRadiusCircle = L.circle(map.getCenter(), _maxRadius, { color: 'green' });
         anchorRadiusCircle.addTo(map)
@@ -351,8 +373,8 @@
           }
           _heading = heading;
 
-          boatMarker.setLatLng(_currentCoordinates);
-          boatMarker.setRotationAngle(heading);
+          myBoatMarker.setLatLng(_currentCoordinates);
+          myBoatMarker.setHeading(heading);
 
           if (_vesselTracks[_mmsi]) {
             _vesselTracks[_mmsi].addLatLng([_currentCoordinates.lat, _currentCoordinates.lng, _vesselTracks[_mmsi].getLatLngs().length]);
@@ -456,7 +478,7 @@
               //have we seen them already?
               if (vessel.mmsi in _vessels) {
                 _vessels[vessel.mmsi].setLatLng([position.latitude, position.longitude]);
-                _vessels[vessel.mmsi].setRotationAngle(vessel_heading);
+                _vessels[vessel.mmsi].setHeading(vessel_heading);
                 _vessels[vessel.mmsi]._popup.setContent(`${vessel.name} at ${distance} meters`);
 
                 //do we have a track for them?
@@ -469,10 +491,13 @@
                 }
                 //nope, create their info
               } else {
-                _vessels[vessel.mmsi] = L.marker([position.latitude, position.longitude], {
-                  rotationAngle: vessel_heading,
-                  rotationOrigin: "center center",
-                  icon: vesselIcon
+                _vessels[vessel.mmsi] = new L.BoatMarker([position.latitude, position.longitude], {
+                  beam: 8,
+                  loa: 15,
+                  gpsOffset: {x: 0, y: 0},
+                  heading: vessel_heading,
+                  icon: 'icons/boat.svg'
+                  //icon: vesselIcon
                 });
                 _vessels[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
 
@@ -599,7 +624,7 @@
       }
 
       function uiSetRadiusColor() {
-        if (calculateDistance(anchorRadiusCircle.getLatLng().lat, anchorRadiusCircle.getLatLng().lng, boatMarker.getLatLng().lat, boatMarker.getLatLng().lng) > anchorRadiusCircle.getRadius())
+        if (calculateDistance(anchorRadiusCircle.getLatLng().lat, anchorRadiusCircle.getLatLng().lng, myBoatMarker.getLatLng().lat, myBoatMarker.getLatLng().lng) > anchorRadiusCircle.getRadius())
           anchorRadiusCircle.setStyle({ 'color': 'red' })
         else if (_isAnchored)
           anchorRadiusCircle.setStyle({ 'color': 'green' })
