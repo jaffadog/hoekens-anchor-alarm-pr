@@ -59,7 +59,6 @@
       let _boatAnchorRollerHeight = 1.0;
       let _gpsBowYDistance = 0;
       let _gpsBowXDistance = 0;
-      let _gpsBowDistance = 0;
       let _tideDelta = 0;
 
       let _isAnchored = false;
@@ -232,20 +231,6 @@
         //anchor distance guess...
         let anchorDistanceGuess = 0;
 
-        //default to 5x scope
-        if (typeof data.environment.depth?.belowSurface?.value !== "undefined")
-          anchorDistanceGuess += data.environment.depth.belowSurface.value * 5;
-
-        //add in our gps offset
-        if (typeof data.sensors?.gps?.fromBow?.value !== "undefined")
-          anchorDistanceGuess += data.sensors.gps.fromBow.value;
-
-        //our radius defaults.
-        _maxRadius = Math.round(parseInt(anchorDistanceGuess * 1.5));
-        _maxRadius = Math.round(_maxRadius / 5) * 5; //multiples of 5
-        _maxRadius = Math.max(0, _maxRadius);
-        _maxRadius = Math.min(200, _maxRadius);
-
         //a couple different depths
         let belowKeel;
         let belowSurface;
@@ -273,34 +258,38 @@
         if (typeof data.sensors?.gps?.fromCenter?.value !== "undefined")
           _gpsBowXDistance = data.sensors.gps.fromCenter.value;
 
-        _gpsBowDistance = calculateVectorDistance(_gpsBowXDistance, _gpsBowYDistance);
+        //check our tide data
+        if (typeof data.environment.tide !== undefined)
+          _tideDelta = estimateTideHeightSmooth(data.environment.tide.timeLow.value, data.environment.tide.heightLow.value, data.environment.tide.timeHigh.value, data.environment.tide.heightHigh.value);
 
-        //this is our initial data lookup call.  Needs to happen first.
-        $.get('/signalk/v1/api/vessels/self/environment/tide', (data) => {
-          if (typeof data.heightHigh?.value !== "undefined" &&
-            typeof data.heightLow?.value !== "undefined" &&
-            typeof data.timeHigh?.value !== "undefined" &&
-            typeof data.timeLow?.value !== "undefined"
-          ) {
-            _tideDelta = estimateTideHeightSmooth(data.timeLow.value, data.heightLow.value, data.timeHigh.value, data.heightHigh.value);
-          }
-        });
+        //try to guess where to put the anchor.
+        anchorDistanceGuess = calculateScope(5, belowSurface);
+
+        //our radius defaults.
+        _maxRadius = anchorDistanceGuess;
+        _maxRadius += calculateVectorDistance(_gpsBowXDistance, _gpsBowYDistance);
+        _maxRadius *= 1.5;
+        _maxRadius = Math.round(_maxRadius / 5) * 5; //multiples of 5
+        _maxRadius = Math.max(0, _maxRadius);
+        _maxRadius = Math.min(200, _maxRadius);
 
         data = data.navigation;
         _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);
 
+        //init our map
         map = L.map('map', {
           zoomControl: false,
-          //attributionControl: false
         }).setView(_currentCoordinates, 5);
 
+        //default to satellite
         satelliteLayer.addTo(map);
-        //osmLayer.addTo(map);
 
+        //add scale control
         L.control.scale({
           position: 'topleft' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
         }).addTo(map);
 
+        //add zoom control
         L.control.zoom({
           position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
         }).addTo(map);
@@ -313,10 +302,7 @@
         const scopeBox = new ScopeBoxControl();
         map.addControl(scopeBox);
 
-        let layerControl = L.control.layers(baseMaps, {}, {
-          position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
-        }).addTo(map);
-
+        //load up our heading.
         let heading = data.headingTrue?.value;
         if (heading) {
           heading = rad2deg(heading);
@@ -328,6 +314,7 @@
         //calculate the x offset from the left side, not center
         let xOffset = _boatBeam - (_boatBeam / 2 - _gpsBowXDistance);
 
+        //marker for our boat
         myBoatMarker = new L.BoatMarker(_currentCoordinates, {
           beam: _boatBeam,
           loa: _boatLOA,
@@ -336,10 +323,12 @@
           icon: 'icons/catamaran.png'
         }).addTo(map)
 
+        //marker for our boat's antenna
         gpsAntennaMarker = L.marker(_currentCoordinates, {
           icon: gpsAntennaIcon
         }).addTo(map);
 
+        //our radius
         anchorRadiusCircle = L.circle(map.getCenter(), _maxRadius, { color: 'green' });
         anchorRadiusCircle.addTo(map)
         uiSetRadius(_maxRadius)
@@ -358,11 +347,12 @@
 
         if ((data.anchor) && (data.anchor.position) && (data.anchor.position.value)) {
           let anchorPosition = data.anchor.position.value;
-          let _anchorCoordinates = L.latLng(anchorPosition.latitude, anchorPosition.longitude);
+          _anchorCoordinates = L.latLng(anchorPosition.latitude, anchorPosition.longitude);
           let radius = parseInt(data.anchor.maxRadius.value);
           dropAnchor(_anchorCoordinates, radius);
         } else {
-          let anchorPositionGuess = calculateDestinationPoint(_currentCoordinates.lat, _currentCoordinates.lng, heading, anchorDistanceGuess);
+          let bowPos = calculateBowCoordinates(_currentCoordinates, heading, _gpsBowXDistance, _gpsBowYDistance);
+          let anchorPositionGuess = calculateDestinationPoint(bowPos.lat, bowPos.lng, heading, anchorDistanceGuess);
           _anchorCoordinates = L.latLng(anchorPositionGuess.latitude, anchorPositionGuess.longitude);
           raiseAnchor();
         }
@@ -372,6 +362,7 @@
         //zoom baby zoom.
         map.fitBounds(anchorRadiusCircle.getBounds());
 
+        //load up all the other vessels.
         $.get(`/signalk/v1/api/tracks?radius=${_filterRadius}`, (tracks) => {
           const mmsiRegex = /urn:mrn:imo:mmsi:(\d+)$/;
           for (uri in tracks) {
@@ -423,6 +414,7 @@
         $.get('/signalk/v1/api/vessels/self/navigation', (data) => {
           _currentCoordinates = L.latLng(data.position.value.latitude, data.position.value.longitude);
 
+          //load our heading value
           let heading = data.headingTrue?.value;
           if (heading) {
             heading = rad2deg(heading);
@@ -431,16 +423,18 @@
           }
           _heading = heading;
 
+          //update our markers
           myBoatMarker.setLatLng(_currentCoordinates);
           myBoatMarker.setHeading(heading);
-
           gpsAntennaMarker.setLatLng(_currentCoordinates);
 
+          //add to our scribble
           if (_vesselTracks[_mmsi]) {
             _vesselTracks[_mmsi].addLatLng([_currentCoordinates.lat, _currentCoordinates.lng, _vesselTracks[_mmsi].getLatLngs().length]);
             _vesselTracks[_mmsi].options.max++;
           }
 
+          //redraw our anchor line
           updateAnchorLine(_currentCoordinates, _anchorCoordinates);
         });
 
@@ -800,23 +794,19 @@
         //the delta between now and high tide.
         maxHeight += _tideDelta;
 
-        scope = maxHeight * 7;
-        //scope = Math.round(scope * 2) / 2;
+        scope = calculateScope(7, dbs);
         scope = scope.toFixed(1);
         $('#scope7to1').html(`${scope}m`);
 
-        scope = maxHeight * 5;
-        //scope = Math.round(scope * 2) / 2;
+        scope = calculateScope(5, dbs);
         scope = scope.toFixed(1);
         $('#scope5to1').html(`${scope}m`);
 
-        scope = maxHeight * 4;
-        //scope = Math.round(scope * 2) / 2;
+        scope = calculateScope(4, dbs);
         scope = scope.toFixed(1);
         $('#scope4to1').html(`${scope}m`);
 
-        scope = maxHeight * 3;
-        //scope = Math.round(scope * 2) / 2;
+        scope = calculateScope(3, dbs);
         scope = scope.toFixed(1);
         $('#scope3to1').html(`${scope}m`);
 
@@ -832,6 +822,23 @@
         maxHeight = maxHeight.toFixed(1);
         $('#scopeTotal').html(`${maxHeight}m`);
 
+      }
+
+      function calculateScope(scope, dbs) {
+
+        //start with depth
+        let maxHeight = dbs;
+
+        //the height of our bow roller.
+        maxHeight += _boatAnchorRollerHeight;
+
+        //the delta between now and high tide.
+        maxHeight += _tideDelta;
+
+        //okay, send it back.
+        let total = maxHeight * scope;
+
+        return total;
       }
 
       function updateWindSpeedUI(speedApparent) {
@@ -856,22 +863,7 @@
 
       function updateAnchorLine(current, anchor) {
 
-        //first do our Y along our heading.
-        let _bc = calculateDestinationPoint(current.lat, current.lng, _heading, _gpsBowYDistance);
-
-        //then do our X at 90 degrees.
-        if (_gpsBowXDistance != 0) {
-          let _heading2 = _heading;
-          if (_gpsBowXDistance > 0)
-            _heading2 = _heading + 90;
-          else if (_gpsBowXDistance < 0)
-            _heading2 = _heading - 90;
-          _heading2 = normalizeAngle(_heading2);
-          _bc = calculateDestinationPoint(_bc.latitude, _bc.longitude, _heading2, _gpsBowXDistance);
-        }
-
-        //okay use the new bow coordinates
-        let _bowCoordinates = L.latLng(_bc.latitude, _bc.longitude);
+        let _bowCoordinates = calculateBowCoordinates(current, _heading, _gpsBowXDistance, _gpsBowYDistance);
 
         anchorLine.setLatLngs([_bowCoordinates, anchor]);
         anchorLineAngle.setLatLngs([_bowCoordinates, anchor]); // this duplicate on is so we can have 2 text labels
@@ -906,6 +898,25 @@
           }
         });
 
+      }
+
+      function calculateBowCoordinates(current, heading, xOffset, yOffset) {
+        //first do our Y along our heading.
+        let bc = calculateDestinationPoint(current.lat, current.lng, heading, yOffset);
+
+        //then do our X at 90 degrees.
+        if (xOffset != 0) {
+          let _heading2 = heading;
+          if (_gpsBowXDistance > 0)
+            _heading2 = heading + 90;
+          else if (xOffset < 0)
+            _heading2 = heading - 90;
+          _heading2 = normalizeAngle(_heading2);
+          bc = calculateDestinationPoint(bc.latitude, bc.longitude, _heading2, xOffset);
+        }
+
+        //okay use the new bow coordinates
+        return L.latLng(bc.latitude, bc.longitude);
       }
 
       function calculateDistance(lat1, lon1, lat2, lon2) {
