@@ -259,8 +259,13 @@
           _gpsBowXDistance = data.sensors.gps.fromCenter.value;
 
         //check our tide data
-        if (typeof data.environment.tide !== undefined)
-          _tideDelta = estimateTideHeightSmooth(data.environment.tide.timeLow.value, data.environment.tide.heightLow.value, data.environment.tide.timeHigh.value, data.environment.tide.heightHigh.value);
+        if (typeof data.environment.tide !== undefined) {
+          let currentTide = estimateTideHeightSmooth(data.environment.tide.timeLow.value, data.environment.tide.heightLow.value, data.environment.tide.timeHigh.value, data.environment.tide.heightHigh.value);
+          console.log(`current tide: ${currentTide}`);
+
+          _tideDelta = data.environment.tide.heightHigh.value - currentTide;
+          console.log(`tide delta: ${_tideDelta}`);
+        }
 
         //try to guess where to put the anchor.
         anchorDistanceGuess = calculateScope(5, belowSurface);
@@ -1039,6 +1044,12 @@
 
         let t0, h0, t1, h1;
 
+        console.log('time low: ' + new Date(tLow));
+        console.log('time high: ' + new Date(tHigh));
+        console.log('time current: ' + new Date(tCurrent));
+        console.log(`low height: ${lowHeight}`);
+        console.log(`high height: ${highHeight}`);
+
         // determine rising vs falling tide
         if (tLow < tHigh) {
           // rising: low → high
@@ -1061,7 +1072,11 @@
         const sineFrac = (1 - Math.cos(Math.PI * frac)) / 2;
 
         // interpolated height
-        return h0 + (h1 - h0) * sineFrac;
+        const result = h0 + (h1 - h0) * sineFrac;
+
+        console.log(`currentHeight: ${result}`);
+
+        return result;
       }
     </script>
 </body>
