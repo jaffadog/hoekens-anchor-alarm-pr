@@ -5,6 +5,7 @@
 * added depthBelowSurface
 * fixed a bug when loading app and circle isnt over anchor target
 * radius guess is now a multiple of 5
+* added required path checks to the plugin config page
 
 #v1.2
 

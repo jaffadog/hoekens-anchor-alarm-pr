@@ -19,76 +19,150 @@ const subscriberPeriod = 1000
 
 module.exports = function (app) {
   var plugin = {};
+  var schema;
 
   plugin.id = "hoekens-anchor-alarm"
   plugin.name = "Hoeken's Anchor Alarm"
   plugin.description = "Fork of signalk-anchoralarm-plugin with upgraded UI, etch-a-sketch tracks, and engine override."
 
-  plugin.schema = {
-    title: "Hoeken's Anchor Alarm",
-    type: "object",
-    required: [
-      "radius",
-      "active",
-    ],
-    properties: {
-      state: {
-        title: "Alarm Serverity",
-        description: "Anchor alarm notification level",
-        type: "string",
-        default: "emergency",
-        "enum": ["alert", "warn", "alarm", "emergency"]
-      },
-      enableEngineCheck: {
-        type: 'boolean',
-        title: 'Engine Override Enabled',
-        description: "Check propulsion.* to see if the engines are on before sending alarm notification.",
-        default: true
-      },
-      anchorAlarmInterval: {
-        type: "number",
-        title: "How often to send anchor alarm when dragging (in seconds).  Zero is continuously.",
-        default: 60
-      },
-      noPositionAlarmTime: {
-        type: "number",
-        title: "Send a notification if no position is received for the given number of seconds",
-        default: 60
-      },
-      bowAnchorRollerHeight: {
-        type: "number",
-        title: "Height of the bow anchor roller above the waterline (in meters).  Used for scope calculations.",
-        default: 0
-      },
-      on: {
-        type: 'boolean',
-        title: 'Alarm On',
-        description: "Used for saving state in case of SignalK restart.",
-        default: false
-      },
-      radius: {
-        type: "number",
-        title: "Alarm Radius (m)",
-        description: "Used for saving state in case of SignalK restart.",
-        default: 60
-      },
-      position: {
-        type: "object",
-        title: "Anchor Position",
-        description: "Used for saving state in case of SignalK restart.",
-        properties: {
-          latitude: {
-            title: "Latitude",
-            type: "number"
-          },
-          longitude: {
-            title: "Longitude",
-            type: "number"
+  let requiredPaths = [
+    {
+      path: "design.beam",
+      description: "Edit Server -> Settings"
+    },
+    {
+      path: "design.length",
+      description: "Edit Server -> Settings"
+    },
+    {
+      path: "design.draft",
+      description: "Edit Server -> Settings"
+    },
+    {
+      path: "environment.depth.belowTransducer",
+      description: "No depthsounder found."
+    },
+    {
+      path: "environment.depth.transducerToKeel",
+      description: "You can set it with configuration options below."
+    },
+    {
+      path: "environment.depth.belowSurface",
+      description: "Provided by plugin <b>derived-data</b>"
+    },
+    {
+      path: "environment.tide",
+      description: "Tide data provided by plugin <b>signalk-tides</b>"
+    },
+    {
+      path: "propulsion",
+      description: "Engine data missing, needed for automatic alarm override."
+    },
+    {
+      path: "sensors.gps.fromBow",
+      description: "GPS Antenna position.  Edit Server -> Settings"
+    },
+    {
+      path: "sensors.gps.fromCenter",
+      description: "GPS Antenna position.  Edit Server -> Settings"
+    },
+  ];
+
+  plugin.schema = function () {
+    updateSchema()
+    return schema
+  };
+
+  function updateSchema() {
+    schema = {
+      title: "Hoeken's Anchor Alarm",
+      type: "object",
+      required: [
+        "radius",
+        "active",
+      ],
+      properties: {
+        pathChecks: {
+          title: "Path Checks",
+          type: 'object',
+          properties: {},
+        },
+        state: {
+          title: "Alarm Severity",
+          description: "Anchor alarm notification level",
+          type: "string",
+          default: "emergency",
+          "enum": ["alert", "warn", "alarm", "emergency"]
+        },
+        enableEngineCheck: {
+          type: 'boolean',
+          title: 'Engine Override Enabled',
+          description: "Check propulsion.* to see if the engines are on before sending alarm notification.",
+          default: true
+        },
+        anchorAlarmInterval: {
+          type: "number",
+          title: "How often to send anchor alarm when dragging (in seconds).  Zero is continuously.",
+          default: 60
+        },
+        noPositionAlarmTime: {
+          type: "number",
+          title: "Send a notification if no position is received for the given number of seconds",
+          default: 60
+        },
+        bowAnchorRollerHeight: {
+          type: "number",
+          title: "Height of the bow anchor roller above the waterline (in meters).  Used for scope calculations.",
+          default: 0
+        },
+        transducerToKeel: {
+          type: "number",
+          title: "Distance between the transducer and the keel (in meters, should be negative).  Useful if your install doesn't automatically detect this. 0 and above are ignored.",
+          default: 0
+        },
+        on: {
+          type: 'boolean',
+          title: 'Alarm On',
+          description: "Used for saving state in case of SignalK restart.",
+          default: false
+        },
+        radius: {
+          type: "number",
+          title: "Alarm Radius (m)",
+          description: "Used for saving state in case of SignalK restart.",
+          default: 60
+        },
+        position: {
+          type: "object",
+          title: "Anchor Position",
+          description: "Used for saving state in case of SignalK restart.",
+          properties: {
+            latitude: {
+              title: "Latitude",
+              type: "number"
+            },
+            longitude: {
+              title: "Longitude",
+              type: "number"
+            }
           }
         }
-      },
+      }
+    };
+
+    let pathChecks = {};
+    for (const myPath of requiredPaths) {
+      pathChecks[myPath.path] = {
+        title: `${app.getSelfPath(myPath.path) ? '✅' : '❌'} ${myPath.path}`,
+        description: app.getSelfPath(myPath.path) ? null : myPath.description,
+        type: 'null',
+        readOnly: true,
+        default: false
+      };
     }
-  }
+
+    schema.properties.pathChecks.properties = pathChecks;
+  };
 
   let onStop = [];
   let alarm_state;
@@ -106,7 +180,8 @@ module.exports = function (app) {
 
     configuration = props
     try {
-      //save our config to the tree so we can access it from the web side
+
+      //save our anchor roller height to the tree so we can access it from the web side
       if (typeof configuration['bowAnchorRollerHeight'] != 'undefined') {
         app.handleMessage(plugin.id, {
           updates: [
@@ -121,6 +196,28 @@ module.exports = function (app) {
                 {
                   path: "design.bowAnchorRollerHeight",
                   value: parseFloat(configuration['bowAnchorRollerHeight'])
+                }
+              ]
+            }
+          ]
+        })
+      }
+
+      //save our depthsounder config to the tree so it can be used to calculate depth below surface
+      if (typeof configuration['transducerToKeel'] != 'undefined' && parseFloat(configuration['transducerToKeel']) < 0) {
+        app.handleMessage(plugin.id, {
+          updates: [
+            {
+              meta: [
+                {
+                  path: 'environment.depth.transducerToKeel',
+                  value: { units: 'm' }
+                }
+              ],
+              values: [
+                {
+                  path: "environment.depth.transducerToKeel",
+                  value: parseFloat(configuration['transducerToKeel'])
                 }
               ]
             }
