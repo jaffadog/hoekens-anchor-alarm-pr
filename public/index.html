@@ -301,6 +301,11 @@
           position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
         }).addTo(map);
 
+        //add layer control
+        let layerControl = L.control.layers(baseMaps, {}, {
+          position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+        }).addTo(map);
+
         // Infobox for status
         const infoBox = new InfoBoxControl();
         map.addControl(infoBox);
