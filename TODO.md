@@ -1,9 +1,5 @@
 #v1.3
 
-* add option for anchor roller height offset to plugin config
-* add option for antenna offset to plugin config
-* add option for depthsounder offset to plugin config
-
 * add different icons based on boat type
   * design.aisShipType: https://api.vtexplorer.com/docs/ref-aistypes.html
   * catamaran vs mono based length/beam ratio

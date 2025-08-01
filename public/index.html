@@ -56,7 +56,7 @@
 
       let _boatLOA = 0;
       let _boatBeam = 0;
-      let _boatAnchorRollerHeight = 1.0;
+      let _boatAnchorRollerHeight = 0;
       let _gpsBowYDistance = 0;
       let _gpsBowXDistance = 0;
       let _tideDelta = 0;
@@ -253,6 +253,8 @@
           _boatLOA = parseFloat(data.design.length.value.overall);
         if (typeof data.design?.beam?.value !== "undefined")
           _boatBeam = parseFloat(data.design.beam?.value);
+        if (typeof data.design?.bowAnchorRollerHeight?.value !== "undefined")
+          _boatAnchorRollerHeight = parseFloat(data.design.bowAnchorRollerHeight?.value);
         if (typeof data.sensors?.gps?.fromBow?.value !== "undefined")
           _gpsBowYDistance = data.sensors.gps.fromBow.value;
         if (typeof data.sensors?.gps?.fromCenter?.value !== "undefined")
@@ -553,7 +555,7 @@
               } else {
 
                 //default values
-                let loa = 10;
+                let loa = 14;
                 let beam = 4
                 let gpsXOffset = 0;
                 let gpsYOffset = 0;

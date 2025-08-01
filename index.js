@@ -55,6 +55,11 @@ module.exports = function (app) {
         title: "Send a notification if no position is received for the given number of seconds",
         default: 60
       },
+      bowAnchorRollerHeight: {
+        type: "number",
+        title: "Height of the bow anchor roller above the waterline (in meters).  Used for scope calculations.",
+        default: 0
+      },
       on: {
         type: 'boolean',
         title: 'Alarm On',
@@ -101,6 +106,27 @@ module.exports = function (app) {
 
     configuration = props
     try {
+      //save our config to the tree so we can access it from the web side
+      if (typeof configuration['bowAnchorRollerHeight'] != 'undefined') {
+        app.handleMessage(plugin.id, {
+          updates: [
+            {
+              meta: [
+                {
+                  path: 'design.bowAnchorRollerHeight',
+                  value: { units: 'm' }
+                }
+              ],
+              values: [
+                {
+                  path: "design.bowAnchorRollerHeight",
+                  value: parseFloat(configuration['bowAnchorRollerHeight'])
+                }
+              ]
+            }
+          ]
+        })
+      }
 
       //setup our watchdog timer
       let noPositionAlarmTime = configuration["noPositionAlarmTime"];
@@ -113,6 +139,7 @@ module.exports = function (app) {
         }
       }
 
+      //should we be watching?
       var isOn = configuration['on']
       var position = configuration['position']
       var radius = configuration['radius']
@@ -123,6 +150,7 @@ module.exports = function (app) {
         startWatchingPosition()
       }
 
+      //api for the web app
       if (app.registerActionHandler) {
         app.registerActionHandler('vessels.self',
           `navigation.anchor.position`,
@@ -133,6 +161,7 @@ module.exports = function (app) {
           putRadius)
       }
 
+      //set some units
       app.handleMessage(plugin.id, {
         updates: [
           {
@@ -145,7 +174,7 @@ module.exports = function (app) {
                 path: 'navigation.anchor.apparentBearing',
                 value: { units: 'rad' }
               }
-            ]
+            ],
           }
         ]
       })
