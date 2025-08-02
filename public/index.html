@@ -58,6 +58,7 @@
       let _boatAnchorRollerHeight = 0;
       let _gpsBowYDistance = 0;
       let _gpsBowXDistance = 0;
+      let _aisShipType = 0;
       let _tideDelta = 0;
 
       let _isAnchored = false;
@@ -258,6 +259,8 @@
           _gpsBowYDistance = data.sensors.gps.fromBow.value;
         if (typeof data.sensors?.gps?.fromCenter?.value !== "undefined")
           _gpsBowXDistance = data.sensors.gps.fromCenter.value;
+        if (typeof data.design?.aisShipType?.value?.id !== "undefined")
+          _aisShipType = data.design.aisShipType.value.id;
 
         //check our tide data
         if (typeof data.environment.tide !== undefined) {
@@ -331,7 +334,7 @@
           loa: _boatLOA,
           gpsOffset: { x: xOffset, y: _gpsBowYDistance },
           heading: heading,
-          icon: 'icons/ships/catamaran.svg'
+          icon: getShipTypeIcon(_aisShipType, _boatLOA / _boatBeam)
         }).addTo(map)
 
         //marker for our boat's antenna
@@ -561,6 +564,7 @@
                 //default values
                 let loa = 14;
                 let beam = 4
+                let aisShipType = 36;
                 let gpsXOffset = 0;
                 let gpsYOffset = 0;
 
@@ -573,6 +577,8 @@
                   loa = parseFloat(vessel.design.length.value.overall);
                 if (typeof vessel.design?.beam?.value !== "undefined")
                   beam = parseFloat(vessel.design.beam.value);
+                if (typeof vessel.design?.aisShipType?.value?.id !== "undefined")
+                  aisShipType = vessel.design.aisShipType.value.id;
 
                 //calculate the x offset from the left side, not center
                 let xOffset = beam - (beam / 2 - gpsXOffset);
@@ -583,7 +589,7 @@
                   loa: loa,
                   gpsOffset: { x: xOffset, y: gpsYOffset },
                   heading: vessel_heading,
-                  icon: 'icons/boat.svg'
+                  icon: getShipTypeIcon(aisShipType, loa / beam)
                 });
                 _vessels[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
 
@@ -911,10 +917,15 @@
 
       }
 
-      function getShipTypeIcon(aisShipType) {
-        let icon = "icons/ships/default.png";
+      function getShipTypeIcon(aisShipType, aspectRatio) {
+        let icon = "icons/ships/default.svg";
 
-        switch (expression) {
+        aisShipType = parseInt(aisShipType);
+
+        console.log(aisShipType);
+        console.log(aspectRatio);
+
+        switch (aisShipType) {
           case 20: // Wing in ground (WIG), all ships of this type
           case 21: // Wing in ground (WIG), Hazardous category A
           case 22: // Wing in ground (WIG), Hazardous category B
@@ -932,8 +943,8 @@
             icon = "icons/ships/fishing.svg";
             break;
 
-          case 30: // Towing
-          case 31: // Towing: length exceeds 200m or breadth exceeds 25m
+          case 31: // Towing
+          case 32: // Towing: length exceeds 200m or breadth exceeds 25m
             icon = "icons/ships/towing.svg";
             break;
 
@@ -950,8 +961,10 @@
             break;
 
           case 36: // Sailing
-            icon = "icons/ships/sailing.svg";
-            icon = "icons/ships/catamaran.svg"
+            if (aspectRatio > 3)
+              icon = "icons/ships/sailing.svg";
+            else
+              icon = "icons/ships/catamaran.svg"
             break;
 
           case 37: // Pleasure Craft
@@ -1026,7 +1039,7 @@
           case 77: // Cargo, Reserved for future use
           case 78: // Cargo, Reserved for future use
           case 79: // Cargo, No additional information
-            icon = "icons/ships/noncombatant.svg";
+            icon = "icons/ships/cargo.svg";
             break;
 
           case 80: // Tanker, all ships of this type
@@ -1039,7 +1052,7 @@
           case 87: // Tanker, Reserved for future use
           case 88: // Tanker, Reserved for future use
           case 89: // Tanker, No additional information
-            icon = "icons/ships/noncombatant.svg";
+            icon = "icons/ships/tanker.svg";
             break;
 
           case 90: // Other Type, all ships of this type
