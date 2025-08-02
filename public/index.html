@@ -251,10 +251,7 @@
         //check our tide data
         if (typeof data.environment.tide !== undefined) {
           let currentTide = estimateTideHeightSmooth(data.environment.tide.timeLow.value, data.environment.tide.heightLow.value, data.environment.tide.timeHigh.value, data.environment.tide.heightHigh.value);
-          console.log(`current tide: ${currentTide}`);
-
           _tideDelta = data.environment.tide.heightHigh.value - currentTide;
-          console.log(`tide delta: ${_tideDelta}`);
         }
 
         //try to guess where to put the anchor.
@@ -908,8 +905,8 @@
 
         aisShipType = parseInt(aisShipType);
 
-        console.log(aisShipType);
-        console.log(aspectRatio);
+        // console.log(aisShipType);
+        // console.log(aspectRatio);
 
         switch (aisShipType) {
           case 20: // Wing in ground (WIG), all ships of this type
@@ -948,7 +945,7 @@
 
           case 36: // Sailing
             if (aspectRatio > 3)
-              icon = "icons/ships/sailing.svg";
+              icon = "icons/ships/sailboat.svg";
             else
               icon = "icons/ships/catamaran.svg"
             break;
@@ -1206,11 +1203,11 @@
 
         let t0, h0, t1, h1;
 
-        console.log('time low: ' + new Date(tLow));
-        console.log('time high: ' + new Date(tHigh));
-        console.log('time current: ' + new Date(tCurrent));
-        console.log(`low height: ${lowHeight}`);
-        console.log(`high height: ${highHeight}`);
+        // console.log('time low: ' + new Date(tLow));
+        // console.log('time high: ' + new Date(tHigh));
+        // console.log('time current: ' + new Date(tCurrent));
+        // console.log(`low height: ${lowHeight}`);
+        // console.log(`high height: ${highHeight}`);
 
         // determine rising vs falling tide
         if (tLow < tHigh) {
@@ -1236,7 +1233,7 @@
         // interpolated height
         const result = h0 + (h1 - h0) * sineFrac;
 
-        console.log(`currentHeight: ${result}`);
+        // console.log(`currentHeight: ${result}`);
 
         return result;
       }
