@@ -11,7 +11,7 @@ L.BoatMarker = L.Marker.extend({
   initialize(latlng, options) {
     L.Util.setOptions(this, options);
 
-    console.log(`loa: ${options.loa} beam: ${options.beam} gpsOffset: ${options.gpsOffset.x}, ${options.gpsOffset.y}`);
+    // console.log(`loa: ${options.loa} beam: ${options.beam} gpsOffset: ${options.gpsOffset.x}, ${options.gpsOffset.y}`);
 
     // Build a tiny DivIcon; we'll size it dynamically later
     const icon = L.divIcon({
@@ -77,13 +77,9 @@ L.BoatMarker = L.Marker.extend({
     hPx = Math.round(hPx);
     wPx = Math.round(wPx);
 
-    console.log(`wPx: ${wPx}, hPx: ${hPx}`);
-
     // Compute the offset in px for the GPS antenna
     const oX = Math.round((this.options.gpsOffset.x / this.options.beam) * wPx);
     const oY = Math.round((this.options.gpsOffset.y / this.options.loa) * hPx);
-
-    console.log(`oX: ${oX}, oY: ${oY}`);
 
     // Apply to the icon’s container
     Object.assign(this._icon.style, {
