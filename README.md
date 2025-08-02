@@ -14,6 +14,8 @@ Some of the changes I've made:
   * I always forget to turn the anchor alarm off and its annoying when it alarms as I'm motoring away.
   * If you're truly dragging and you have your motor(s) on, then you already know about it!
   * Plus, the act of turning on your engines will disable the alarm.  One less thing to do in an urgent situation.
+* Added a scope calculator that takes your current depth, height of your bow above water, and the estimated tidal rise and then shows you what your scope would be at 3:1, 4:1, 5:1, and 7:1.  This only shows when the anchor is up.  Install the [signalk-tides](https://github.com/bkeepers/signalk-tides) plugin to get tide data.
+* Boat icons are now location and size accurate.  With your beam, loa, and gps antenna position, it will size the icon to your boats true size and rotate it around the location of the GPS antenna.  This is very helpful if you want to pre-select your anchoring spot based on satellite imagery as you can position your bow right in the center of the circle to drop your anchor.  The alarm will trigger when your GPS antenna position goes outside the radius, so set that as usual.
 * Lots of UI improvements:
   * Added colors to the historical tracks.  Green = new, fading to red = old
   * Inital anchor position guess is now pretty accurate
@@ -24,6 +26,7 @@ Some of the changes I've made:
   * Increased the max zoom
   * Added other boats + their tracks
   * More responsive UI
+  * Added a path checker field to the plugin config to make sure needed data is available.
 
 # Usage
 
@@ -31,18 +34,9 @@ This plugin is intended to be used through the web interface with a phone or com
 
 The way I use this app is to anchor the boat first, then once I'm settled I will use the webapp to set the anchor alarm.  This is where its good to have a high resolution on the tracks, as you can usually see exactly where you dropped the hook.  Make sure to set your radius a bit bigger to avoid false alarms.
 
+With v1.3 and the more accurate icons, it is now easy to pre-select your anchor location with the satellite imagery, circle the radius of the anchor alarm to check the depth is okay, and then use the app to get your bow exactly in the center of the alarm circle for a perfect drop.
+
 If you have engine data in SignalK (`propulsion.*.rpm` or `propulsion.*.state`) then you can enable the engine check functionality. Then, when you leave the anchorage under engine power, it will automatically end the anchor watch.  Additionally, if you are dragging anchor and you start your engines to reposition, it will also disable the anchor alarm.  When your anchor is dragging, it can sometimes be hectic. There's no reason to bombard you with alarms when you are aware of it and getting it sorted.
-
-## Setup Requirements
-
-In order to take advantage of the extra features, make sure your SignalK is setup to provide the following data:
-
-* `navigation.headingTrue` - if your plotter doesnt provide this, use `derived-data` plugin
-* `environment.depth.belowTransducer` - to guess the scope based on your current depth
-* `sensors.gps.fromBow` and `sensors.gps.fromCenter` - for more accurate anchor position guessing
-* `data.environment.wind.directionTrue` and `environment.wind.speedApparent` - for UI
-* `propulsion.*.rpm` or `propulsion.*.state` - used to determine if engines are on or not (optional)
-* `design.length` and `design.beam` - for future use with accurate size icons
 
 ## Recommendations
 
