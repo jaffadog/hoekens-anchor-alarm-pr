@@ -9,6 +9,9 @@
    id="svg1"
    sodipodi:docname="diving.svg"
    inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   inkscape:export-filename="/Users/hoeken/Desktop/anchor alarm/png/diving.png"
+   inkscape:export-xdpi="397.6246"
+   inkscape:export-ydpi="397.6246"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -23,9 +26,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="1.0393706"
-     inkscape:cx="178.4734"
-     inkscape:cy="154.42038"
+     inkscape:zoom="2.5447795"
+     inkscape:cx="29.275621"
+     inkscape:cy="114.15527"
      inkscape:window-width="1512"
      inkscape:window-height="916"
      inkscape:window-x="0"
@@ -57,11 +60,22 @@
        inkscape:export-filename="path1.svg"
        inkscape:export-xdpi="96"
        inkscape:export-ydpi="96"
-       style="fill:#ff0000;fill-opacity:1" />
+       style="display:inline;fill:#ff0000;fill-opacity:1;stroke:#000000;stroke-opacity:0.80000001"
+       inkscape:label="background" />
     <path
-       style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:2.646;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none;stroke-opacity:1"
-       d="M 91.207627,144.26039 114.89359,177.3664"
-       id="path2"
-       sodipodi:nodetypes="cc" />
+       style="fill:#ff0000;fill-opacity:1;stroke:#ffffff;stroke-width:2.64599;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+       d="m 88.503507,145.83114 28.488063,33.79059"
+       id="path2" />
+    <path
+       fill="none"
+       stroke="#000000"
+       stroke-width="2.64583px"
+       d="m 88.373721,148.25293 v 31.75 h 29.104229 v -31.75 q 0,-15.875 -14.55212,-30.42709 -14.552109,15.875 -14.552109,30.42709"
+       id="path1-5"
+       inkscape:export-filename="path1.svg"
+       inkscape:export-xdpi="96"
+       inkscape:export-ydpi="96"
+       style="display:inline;fill:#ff0000;fill-opacity:0;stroke-width:2.646;stroke-dasharray:none"
+       inkscape:label="outline" />
   </g>
 </svg>

@@ -9,6 +9,9 @@
    id="svg1"
    sodipodi:docname="other.svg"
    inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   inkscape:export-filename="/Users/hoeken/Desktop/anchor alarm/png/other.png"
+   inkscape:export-xdpi="397.6246"
+   inkscape:export-ydpi="397.6246"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -23,13 +26,13 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="0.10516601"
-     inkscape:cx="61.807041"
-     inkscape:cy="123.61408"
+     inkscape:zoom="1.4802773"
+     inkscape:cx="74.648176"
+     inkscape:cy="130.71875"
      inkscape:window-width="1512"
-     inkscape:window-height="945"
+     inkscape:window-height="916"
      inkscape:window-x="0"
-     inkscape:window-y="37"
+     inkscape:window-y="38"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1">
     <inkscape:page
@@ -58,5 +61,16 @@
        inkscape:export-xdpi="96"
        inkscape:export-ydpi="96"
        style="fill:#ffffff;fill-opacity:0.60000002" />
+    <text
+       xml:space="preserve"
+       style="font-size:42.3333px;line-height:0.9;font-family:Tahoma;-inkscape-font-specification:Tahoma;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-linejoin:round"
+       x="102.60665"
+       y="172.3006"
+       id="text1"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         style="font-size:42.3333px;stroke-width:1"
+         x="102.60665"
+         y="172.3006">?</tspan></text>
   </g>
 </svg>

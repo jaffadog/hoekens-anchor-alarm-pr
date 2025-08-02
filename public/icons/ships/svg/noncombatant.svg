@@ -9,6 +9,9 @@
    id="svg1"
    sodipodi:docname="noncombatant.svg"
    inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   inkscape:export-filename="/Users/hoeken/Desktop/anchor alarm/png/noncombatant.png"
+   inkscape:export-xdpi="397.6246"
+   inkscape:export-ydpi="397.6246"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -23,13 +26,13 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="0.10516601"
-     inkscape:cx="61.807041"
-     inkscape:cy="123.61408"
+     inkscape:zoom="0.74187821"
+     inkscape:cx="16.849127"
+     inkscape:cy="49.19945"
      inkscape:window-width="1512"
-     inkscape:window-height="945"
+     inkscape:window-height="916"
      inkscape:window-x="0"
-     inkscape:window-y="37"
+     inkscape:window-y="38"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1">
     <inkscape:page
@@ -42,7 +45,14 @@
        bleed="0" />
   </sodipodi:namedview>
   <defs
-     id="defs1" />
+     id="defs1">
+    <rect
+       x="-222.40847"
+       y="37.742044"
+       width="99.74683"
+       height="248.01915"
+       id="rect1" />
+  </defs>
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
@@ -58,5 +68,17 @@
        inkscape:export-xdpi="96"
        inkscape:export-ydpi="96"
        style="fill:#ffffff;fill-opacity:0.60000002" />
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,148.43503,123.96048)"
+       id="text1"
+       style="font-size:96px;line-height:0.9;font-family:Tahoma;-inkscape-font-specification:Tahoma;text-align:center;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect1);display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:3.77953;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1"><tspan
+         x="-204.57422"
+         y="108.5259"
+         id="tspan2">N
+</tspan><tspan
+         x="-201.36328"
+         y="194.92589"
+         id="tspan3">C</tspan></text>
   </g>
 </svg>

@@ -71,11 +71,26 @@
        inkscape:export-xdpi="96"
        inkscape:export-ydpi="96"
        style="fill:#ffffff;fill-opacity:0.60000002" />
-    <path
-       d="m -61.261719,83.829846 h -22.734375 v 60.562504 h -9.140625 V 83.829846 h -22.546871 v -8.15625 h 54.421871 z"
-       id="text2"
-       style="font-size:96px;font-family:'Microsoft Sans Serif';-inkscape-font-specification:'Microsoft Sans Serif';white-space:pre;fill:#ffffff;fill-opacity:0.810771;stroke:#000000;stroke-width:10;stroke-linecap:round;stroke-linejoin:round"
-       transform="matrix(0.26458333,0,0,0.26458333,126.65143,129.83482)"
-       aria-label="T" />
+    <text
+       xml:space="preserve"
+       style="font-size:16.9333px;line-height:0.9;font-family:Tahoma;-inkscape-font-specification:Tahoma;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-linejoin:round"
+       x="102.99939"
+       y="145.31926"
+       id="text1"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         style="stroke-width:1"
+         x="102.99939"
+         y="145.31926">T</tspan><tspan
+         sodipodi:role="line"
+         style="stroke-width:1"
+         x="102.99939"
+         y="160.55923"
+         id="tspan2">U</tspan><tspan
+         sodipodi:role="line"
+         style="stroke-width:1"
+         x="102.99939"
+         y="175.79919"
+         id="tspan3">G</tspan></text>
   </g>
 </svg>

@@ -9,6 +9,9 @@
    id="svg1"
    sodipodi:docname="medical.svg"
    inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   inkscape:export-filename="/Users/hoeken/Desktop/anchor alarm/png/medical.png"
+   inkscape:export-xdpi="397.6246"
+   inkscape:export-ydpi="397.6246"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -60,11 +63,11 @@
        style="fill:#ffffff;fill-opacity:0.60000002" />
     <path
        style="fill:#000000;stroke:#ff0000;stroke-width:5.94999;stroke-linejoin:round;stroke-opacity:1"
-       d="m 103.23797,144.81964 v 22.50279"
+       d="m 102.92291,144.81964 v 22.50279"
        id="path2" />
     <path
        style="fill:#000000;stroke:#ff0000;stroke-width:5.94999;stroke-linejoin:round;stroke-opacity:1"
-       d="M 114.35103,155.74048 H 91.848233"
+       d="M 114.17431,156.07103 H 91.671514"
        id="path2-7" />
   </g>
 </svg>
