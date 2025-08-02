@@ -331,7 +331,7 @@
           loa: _boatLOA,
           gpsOffset: { x: xOffset, y: _gpsBowYDistance },
           heading: heading,
-          icon: 'icons/catamaran.png'
+          icon: 'icons/ships/catamaran.svg'
         }).addTo(map)
 
         //marker for our boat's antenna
@@ -909,6 +909,163 @@
           }
         });
 
+      }
+
+      function getShipTypeIcon(aisShipType) {
+        let icon = "icons/ships/default.png";
+
+        switch (expression) {
+          case 20: // Wing in ground (WIG), all ships of this type
+          case 21: // Wing in ground (WIG), Hazardous category A
+          case 22: // Wing in ground (WIG), Hazardous category B
+          case 23: // Wing in ground (WIG), Hazardous category C
+          case 24: // Wing in ground (WIG), Hazardous category D
+          case 25: // Wing in ground (WIG), Reserved for future use
+          case 26: // Wing in ground (WIG), Reserved for future use
+          case 27: // Wing in ground (WIG), Reserved for future use
+          case 28: // Wing in ground (WIG), Reserved for future use
+          case 29: // Wing in ground (WIG), Reserved for future use
+            icon = "icons/ships/wing-in-ground.svg";
+            break;
+
+          case 30: // Fishing
+            icon = "icons/ships/fishing.svg";
+            break;
+
+          case 30: // Towing
+          case 31: // Towing: length exceeds 200m or breadth exceeds 25m
+            icon = "icons/ships/towing.svg";
+            break;
+
+          case 33: // Dredging or underwater ops
+            icon = "icons/ships/dredging.svg";
+            break;
+
+          case 34: // Diving ops
+            icon = "icons/ships/diving.svg";
+            break;
+
+          case 35: // Military ops
+            icon = "icons/ships/military.svg";
+            break;
+
+          case 36: // Sailing
+            icon = "icons/ships/sailing.svg";
+            icon = "icons/ships/catamaran.svg"
+            break;
+
+          case 37: // Pleasure Craft
+            icon = "icons/ships/pleasure.svg";
+            break;
+
+          case 40: // High speed craft (HSC), all ships of this type
+          case 41: // High speed craft (HSC), Hazardous category A
+          case 42: // High speed craft (HSC), Hazardous category B
+          case 43: // High speed craft (HSC), Hazardous category C
+          case 44: // High speed craft (HSC), Hazardous category D
+          case 45: // High speed craft (HSC), Reserved for future use
+          case 46: // High speed craft (HSC), Reserved for future use
+          case 47: // High speed craft (HSC), Reserved for future use
+          case 48: // High speed craft (HSC), Reserved for future use
+          case 49: // High speed craft (HSC), No additional information
+            icon = "icons/ships/high-speed-craft.svg";
+            break;
+
+          case 50: // Pilot Vessel
+            icon = "icons/ships/pilot.svg";
+            break;
+
+          case 51: // Search and Rescue vessel
+            icon = "icons/ships/sar.svg";
+            break;
+
+          case 52: // Tug
+            icon = "icons/ships/tug.svg";
+            break;
+
+          case 53: // Port Tender
+            icon = "icons/ships/port-tender.svg";
+            break;
+
+          case 54: // Anti-pollution equipment
+            icon = "icons/ships/anti-pollution.svg";
+            break;
+
+          case 55: // Law Enforcement
+            icon = "icons/ships/police.svg";
+            break;
+
+          case 58: // Medical Transport
+            icon = "icons/ships/medical.svg";
+            break;
+
+          case 59: // Noncombatant ship according to RR Resolution No. 18
+            icon = "icons/ships/noncombatant.svg";
+            break;
+
+          case 60: // Passenger, all ships of this type
+          case 61: // Passenger, Hazardous category A
+          case 62: // Passenger, Hazardous category B
+          case 63: // Passenger, Hazardous category C
+          case 64: // Passenger, Hazardous category D
+          case 65: // Passenger, Reserved for future use
+          case 66: // Passenger, Reserved for future use
+          case 67: // Passenger, Reserved for future use
+          case 68: // Passenger, Reserved for future use
+          case 69: // Passenger, No additional information
+            icon = "icons/ships/passenger.svg";
+            break;
+
+          case 70: // Cargo, all ships of this type
+          case 71: // Cargo, Hazardous category A
+          case 72: // Cargo, Hazardous category B
+          case 73: // Cargo, Hazardous category C
+          case 74: // Cargo, Hazardous category D
+          case 75: // Cargo, Reserved for future use
+          case 76: // Cargo, Reserved for future use
+          case 77: // Cargo, Reserved for future use
+          case 78: // Cargo, Reserved for future use
+          case 79: // Cargo, No additional information
+            icon = "icons/ships/noncombatant.svg";
+            break;
+
+          case 80: // Tanker, all ships of this type
+          case 81: // Tanker, Hazardous category A
+          case 82: // Tanker, Hazardous category B
+          case 83: // Tanker, Hazardous category C
+          case 84: // Tanker, Hazardous category D
+          case 85: // Tanker, Reserved for future use
+          case 86: // Tanker, Reserved for future use
+          case 87: // Tanker, Reserved for future use
+          case 88: // Tanker, Reserved for future use
+          case 89: // Tanker, No additional information
+            icon = "icons/ships/noncombatant.svg";
+            break;
+
+          case 90: // Other Type, all ships of this type
+          case 91: // Other Type, Hazardous category A
+          case 92: // Other Type, Hazardous category B
+          case 93: // Other Type, Hazardous category C
+          case 94: // Other Type, Hazardous category D
+          case 95: // Other Type, Reserved for future use
+          case 96: // Other Type, Reserved for future use
+          case 97: // Other Type, Reserved for future use
+          case 98: // Other Type, Reserved for future use
+          case 99: // Other Type, no additional information
+            icon = "icons/ships/other.svg";
+            break;
+
+          // 0 	Not available (default)
+          // 1-19 	Reserved for future use
+          // 38 	Reserved
+          // 39 	Reserved
+          // 56 	Spare - Local Vessel
+          // 57 	Spare - Local Vessel
+          default:
+            break;
+        }
+
+        return icon;
       }
 
       function calculateBowCoordinates(current, heading, xOffset, yOffset) {
