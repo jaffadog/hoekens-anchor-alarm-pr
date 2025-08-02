@@ -43,7 +43,7 @@
 
       let _currentCoordinates;
       let _anchorCoordinates;
-      let _filterRadius = 500;
+      let _filterRadius = 50000;
       let _mmsi;
       let _maxRadius = 50;
       let _vessels = {};
@@ -309,7 +309,7 @@
         _heading = heading;
 
         //calculate the x offset from the left side, not center
-        let xOffset = _boatBeam - (_boatBeam / 2 - _gpsBowXDistance);
+        let xOffset = _boatBeam / 2 + _gpsBowXDistance;
 
         //marker for our boat
         myBoatMarker = new L.BoatMarker(_currentCoordinates, {
@@ -532,6 +532,7 @@
                 _vessels[vessel.mmsi].setLatLng([position.latitude, position.longitude]);
                 _vessels[vessel.mmsi].setHeading(vessel_heading);
                 _vessels[vessel.mmsi]._popup.setContent(`${vessel.name} at ${distance} meters`);
+                _vessels[vessel.mmsi].gpsAntennaMarker.setLatLng([position.latitude, position.longitude]);
 
                 //do we have a track for them?
                 if (_vesselTracks[vessel.mmsi]) {
@@ -551,11 +552,14 @@
                 let gpsXOffset = 0;
                 let gpsYOffset = 0;
 
+                console.log(vessel.name);
+                console.log(vessel.sensors.ais);
+
                 //load them if we got them.
                 if (typeof vessel.sensors.ais?.fromCenter?.value !== "undefined")
-                  gpsXOffset = vessel.sensors.ais.fromCenter.value;
+                  gpsXOffset = parseFloat(vessel.sensors.ais.fromCenter.value);
                 if (typeof vessel.sensors.ais?.fromBow?.value !== "undefined")
-                  gpsYOffset = vessel.sensors.ais.fromCenter.value;
+                  gpsYOffset = parseFloat(vessel.sensors.ais.fromBow.value);
                 if (typeof vessel.design?.length?.value !== "undefined")
                   loa = parseFloat(vessel.design.length.value.overall);
                 if (typeof vessel.design?.beam?.value !== "undefined")
@@ -564,7 +568,7 @@
                   aisShipType = vessel.design.aisShipType.value.id;
 
                 //calculate the x offset from the left side, not center
-                let xOffset = beam - (beam / 2 - gpsXOffset);
+                let xOffset = beam / 2 + _gpsBowXDistance;
 
                 //create our boat marker
                 _vessels[vessel.mmsi] = new L.BoatMarker([position.latitude, position.longitude], {
@@ -575,6 +579,12 @@
                   icon: getShipTypeIcon(aisShipType, loa / beam)
                 });
                 _vessels[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
+
+                //marker for our boat's antenna
+                _vessels[vessel.mmsi].gpsAntennaMarker = L.marker([position.latitude, position.longitude], {
+                  icon: gpsAntennaIcon
+                }).addTo(map);
+                _vessels[vessel.mmsi].gpsAntennaMarker.setLatLng([position.latitude, position.longitude]);
 
                 //make sure we didnt load their track already.
                 if (vessel.mmsi in _vesselTracks === false) {
@@ -901,7 +911,7 @@
       }
 
       function getShipTypeIcon(aisShipType, aspectRatio) {
-        let icon = "icons/ships/default.svg";
+        let icon = "icons/ships/png/default.png";
 
         aisShipType = parseInt(aisShipType);
 
@@ -919,39 +929,39 @@
           case 27: // Wing in ground (WIG), Reserved for future use
           case 28: // Wing in ground (WIG), Reserved for future use
           case 29: // Wing in ground (WIG), Reserved for future use
-            icon = "icons/ships/wing-in-ground.svg";
+            icon = "icons/ships/png/wing-in-ground.png";
             break;
 
           case 30: // Fishing
-            icon = "icons/ships/fishing.svg";
+            icon = "icons/ships/png/fishing.png";
             break;
 
           case 31: // Towing
           case 32: // Towing: length exceeds 200m or breadth exceeds 25m
-            icon = "icons/ships/towing.svg";
+            icon = "icons/ships/png/towing.png";
             break;
 
           case 33: // Dredging or underwater ops
-            icon = "icons/ships/dredging.svg";
+            icon = "icons/ships/png/dredging.png";
             break;
 
           case 34: // Diving ops
-            icon = "icons/ships/diving.svg";
+            icon = "icons/ships/png/diving.png";
             break;
 
           case 35: // Military ops
-            icon = "icons/ships/military.svg";
+            icon = "icons/ships/png/military.png";
             break;
 
           case 36: // Sailing
             if (aspectRatio > 3)
-              icon = "icons/ships/sailboat.svg";
+              icon = "icons/ships/png/sailboat.png";
             else
-              icon = "icons/ships/catamaran.svg"
+              icon = "icons/ships/png/catamaran.png"
             break;
 
           case 37: // Pleasure Craft
-            icon = "icons/ships/pleasure.svg";
+            icon = "icons/ships/png/pleasure.png";
             break;
 
           case 40: // High speed craft (HSC), all ships of this type
@@ -964,39 +974,39 @@
           case 47: // High speed craft (HSC), Reserved for future use
           case 48: // High speed craft (HSC), Reserved for future use
           case 49: // High speed craft (HSC), No additional information
-            icon = "icons/ships/high-speed-craft.svg";
+            icon = "icons/ships/png/high-speed-craft.png";
             break;
 
           case 50: // Pilot Vessel
-            icon = "icons/ships/pilot.svg";
+            icon = "icons/ships/png/pilot.png";
             break;
 
           case 51: // Search and Rescue vessel
-            icon = "icons/ships/sar.svg";
+            icon = "icons/ships/png/sar.png";
             break;
 
           case 52: // Tug
-            icon = "icons/ships/tug.svg";
+            icon = "icons/ships/png/tug.png";
             break;
 
           case 53: // Port Tender
-            icon = "icons/ships/port-tender.svg";
+            icon = "icons/ships/png/port-tender.png";
             break;
 
           case 54: // Anti-pollution equipment
-            icon = "icons/ships/anti-pollution.svg";
+            icon = "icons/ships/png/anti-pollution.png";
             break;
 
           case 55: // Law Enforcement
-            icon = "icons/ships/police.svg";
+            icon = "icons/ships/png/police.png";
             break;
 
           case 58: // Medical Transport
-            icon = "icons/ships/medical.svg";
+            icon = "icons/ships/png/medical.png";
             break;
 
           case 59: // Noncombatant ship according to RR Resolution No. 18
-            icon = "icons/ships/noncombatant.svg";
+            icon = "icons/ships/png/noncombatant.png";
             break;
 
           case 60: // Passenger, all ships of this type
@@ -1009,7 +1019,7 @@
           case 67: // Passenger, Reserved for future use
           case 68: // Passenger, Reserved for future use
           case 69: // Passenger, No additional information
-            icon = "icons/ships/passenger.svg";
+            icon = "icons/ships/png/passenger.png";
             break;
 
           case 70: // Cargo, all ships of this type
@@ -1022,7 +1032,7 @@
           case 77: // Cargo, Reserved for future use
           case 78: // Cargo, Reserved for future use
           case 79: // Cargo, No additional information
-            icon = "icons/ships/cargo.svg";
+            icon = "icons/ships/png/cargo.png";
             break;
 
           case 80: // Tanker, all ships of this type
@@ -1035,7 +1045,7 @@
           case 87: // Tanker, Reserved for future use
           case 88: // Tanker, Reserved for future use
           case 89: // Tanker, No additional information
-            icon = "icons/ships/tanker.svg";
+            icon = "icons/ships/png/tanker.png";
             break;
 
           case 90: // Other Type, all ships of this type
@@ -1048,7 +1058,7 @@
           case 97: // Other Type, Reserved for future use
           case 98: // Other Type, Reserved for future use
           case 99: // Other Type, no additional information
-            icon = "icons/ships/other.svg";
+            icon = "icons/ships/png/other.png";
             break;
 
           // 0 	Not available (default)

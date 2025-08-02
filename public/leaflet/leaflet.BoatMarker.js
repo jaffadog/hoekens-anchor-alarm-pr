@@ -11,12 +11,12 @@ L.BoatMarker = L.Marker.extend({
   initialize(latlng, options) {
     L.Util.setOptions(this, options);
 
-    //console.log(`loa: ${options.loa} beam: ${options.beam} gpsOffset: ${options.gpsOffset.x}, ${options.gpsOffset.y}`);
+    console.log(`loa: ${options.loa} beam: ${options.beam} gpsOffset: ${options.gpsOffset.x}, ${options.gpsOffset.y}`);
 
     // Build a tiny DivIcon; we'll size it dynamically later
     const icon = L.divIcon({
       className: 'leaflet-boat-marker',
-      html: `<img src="${this.options.icon}" style="width:100%; height:100%;" />`,
+      html: `<img src="${this.options.icon}" style="width:100%; height:100%; display:block;" />`,
       iconSize: [1, 1],
       iconAnchor: [0, 0]
     });
@@ -64,12 +64,26 @@ L.BoatMarker = L.Marker.extend({
     // Compute px width & height from metre dims
     const pW = map.latLngToLayerPoint([ll.lat, ll.lng + this.options.beam / mPerDegLon]);
     const pH = map.latLngToLayerPoint([ll.lat + this.options.loa / mPerDegLat, ll.lng]);
-    const wPx = Math.abs(pW.x - p0.x);
-    const hPx = Math.abs(pH.y - p0.y);
+    let wPx = Math.abs(pW.x - p0.x);
+    let hPx = Math.abs(pH.y - p0.y);
+
+    //we want to have a minimum size
+    let minHeight = 32;
+    if (hPx < minHeight) {
+      hPx = minHeight;
+      wPx = hPx * this.options.beam / this.options.loa;
+    }
+
+    hPx = Math.round(hPx);
+    wPx = Math.round(wPx);
+
+    console.log(`wPx: ${wPx}, hPx: ${hPx}`);
 
     // Compute the offset in px for the GPS antenna
-    const oX = (this.options.gpsOffset.x / this.options.beam) * wPx;
-    const oY = (this.options.gpsOffset.y / this.options.loa) * hPx;
+    const oX = Math.round((this.options.gpsOffset.x / this.options.beam) * wPx);
+    const oY = Math.round((this.options.gpsOffset.y / this.options.loa) * hPx);
+
+    console.log(`oX: ${oX}, oY: ${oY}`);
 
     // Apply to the icon’s container
     Object.assign(this._icon.style, {
