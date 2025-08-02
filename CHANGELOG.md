@@ -6,6 +6,7 @@
 * fixed a bug when loading app and circle isnt over anchor target
 * radius guess is now a multiple of 5
 * added required path checks to the plugin config page
+* added new icons based on ais type of the boat
 
 #v1.2
 

@@ -1,4 +1,3 @@
-#v1.3
+#v1.4
 
-* create icons for each type
-* catamaran vs mono based length/beam ratio
+* different shapes (arc, polygon, etc)
