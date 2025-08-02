@@ -24,12 +24,12 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      inkscape:zoom="1.00353"
-     inkscape:cx="23.417336"
-     inkscape:cy="148.47588"
+     inkscape:cx="23.417337"
+     inkscape:cy="147.97764"
      inkscape:window-width="1512"
-     inkscape:window-height="945"
+     inkscape:window-height="916"
      inkscape:window-x="0"
-     inkscape:window-y="37"
+     inkscape:window-y="38"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1">
     <inkscape:page
@@ -63,7 +63,8 @@
        id="path1"
        inkscape:export-filename="path1.svg"
        inkscape:export-xdpi="96"
-       inkscape:export-ydpi="96" />
+       inkscape:export-ydpi="96"
+       style="fill:#ffffff;fill-opacity:0.60000002" />
     <path
        style="font-size:96px;font-family:'PT Sans';-inkscape-font-specification:'PT Sans';white-space:pre;stroke:#000000;stroke-width:18.8976;stroke-linejoin:round"
        d="m -204.09,33.232938 q 3.648,-0.864001 7.872,-1.152 4.224,-0.288 8.352,-0.288 4.416,0 8.928,0.863999 4.608,0.864001 8.352,3.168001 3.744,2.304 6.048,6.336 2.4,4.032 2.4,10.272 0,6.144 -2.208,10.368 -2.208,4.224 -5.856,6.912 -3.648,2.592 -8.352,3.744 -4.704,1.152 -9.696,1.152 -0.48,0 -1.632,0 -1.056,0 -2.304,0 -1.152,-0.096 -2.304,-0.192 -1.152,-0.096 -1.632,-0.192 v 25.536 h -7.968 z m 16.416,5.472 q -2.496,0 -4.8,0.096 -2.304,0.096 -3.648,0.48 v 27.84 q 0.48,0.192 1.536,0.288 1.056,0 2.208,0.096 1.152,0 2.208,0 1.056,0 1.536,0 3.264,0 6.432,-0.576 3.264,-0.672 5.856,-2.304 2.592,-1.632 4.128,-4.608 1.632,-2.976 1.632,-7.584 0,-3.936 -1.536,-6.528 -1.44,-2.688 -3.936,-4.224 -2.4,-1.632 -5.472,-2.304 -3.072,-0.672 -6.144,-0.672 z"

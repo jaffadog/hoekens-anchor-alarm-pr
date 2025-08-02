@@ -24,12 +24,12 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      inkscape:zoom="1.2424872"
-     inkscape:cx="35.010422"
-     inkscape:cy="156.13843"
+     inkscape:cx="35.010421"
+     inkscape:cy="156.54085"
      inkscape:window-width="1512"
-     inkscape:window-height="945"
+     inkscape:window-height="916"
      inkscape:window-x="0"
-     inkscape:window-y="37"
+     inkscape:window-y="38"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1">
     <inkscape:page
@@ -63,7 +63,8 @@
        id="path1"
        inkscape:export-filename="path1.svg"
        inkscape:export-xdpi="96"
-       inkscape:export-ydpi="96" />
+       inkscape:export-ydpi="96"
+       style="fill:#ffffff;fill-opacity:0.60000002" />
     <path
        d="M 83.826172,124.90407 H 46.560547 v 21.28125 h 32.296875 v 8.15625 H 46.560547 v 31.125 h -9.09375 v -68.71875 h 46.359375 z"
        id="text1"

@@ -7,7 +7,7 @@
    viewBox="0 0 31.749998 65.412453"
    version="1.1"
    id="svg1"
-   sodipodi:docname="boat copy.svg"
+   sodipodi:docname="dredging.svg"
    inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -24,12 +24,12 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      inkscape:zoom="1.4842514"
-     inkscape:cx="62.994718"
-     inkscape:cy="103.75601"
+     inkscape:cx="62.994719"
+     inkscape:cy="104.09288"
      inkscape:window-width="1512"
-     inkscape:window-height="945"
+     inkscape:window-height="916"
      inkscape:window-x="0"
-     inkscape:window-y="37"
+     inkscape:window-y="38"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1">
     <inkscape:page
@@ -63,7 +63,8 @@
        id="path1"
        inkscape:export-filename="path1.svg"
        inkscape:export-xdpi="96"
-       inkscape:export-ydpi="96" />
+       inkscape:export-ydpi="96"
+       style="fill:#ffffff;fill-opacity:0.60000002" />
     <path
        d="m -103.48047,19.101331 h 21.796876 q 35.015625,0 35.015625,33.984375 0,34.734375 -35.015625,34.734375 h -21.796876 z m 9.093751,60.5625 h 12.515625 q 14.953125,0 20.390625,-6.9375 5.4375,-6.984375 5.4375,-19.640625 0,-12.328125 -5.4375,-19.078125 -5.390625,-6.75 -20.390625,-6.75 h -12.515625 z"
        id="text1"
