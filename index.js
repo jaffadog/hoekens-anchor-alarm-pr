@@ -28,47 +28,47 @@ module.exports = function (app) {
   let requiredPaths = [
     {
       path: "design.beam",
-      description: "Edit Server -> Settings"
+      description: "Optional - used to display size-accurate icon. Edit Server -> Settings"
     },
     {
       path: "design.length",
-      description: "Edit Server -> Settings"
+      description: "Optional - used to display size-accurate icon. Edit Server -> Settings"
     },
     {
       path: "design.draft",
-      description: "Edit Server -> Settings"
+      description: "Optional - used for depth calculations. Edit Server -> Settings"
     },
     {
       path: "design.aisShipType",
-      description: "Edit Server -> Settings"
+      description: "Optional - used to chose the correct icon. Edit Server -> Settings"
     },
     {
       path: "environment.depth.belowTransducer",
-      description: "No depthsounder found."
+      description: "Optional - used for scope calculations. No depthsounder found."
     },
     {
       path: "environment.depth.transducerToKeel",
-      description: "You can set it with configuration options below."
+      description: "Optional - used for scope calculations. You can set it with configuration options below. "
     },
     {
       path: "environment.depth.belowSurface",
-      description: "Provided by plugin <b>derived-data</b>"
+      description: "Optional - used for scope calculations. Provided by plugin *derived-data*"
     },
     {
       path: "environment.tide",
-      description: "Tide data provided by plugin <b>signalk-tides</b>"
+      description: "Optional - used for scope calculations. Tide data provided by plugin *signalk-tides*"
     },
     {
       path: "propulsion",
-      description: "Engine data missing, needed for automatic alarm override."
+      description: "Optional - used for automatic alarm override. Install plugin or hardware to interface with your engines."
     },
     {
       path: "sensors.gps.fromBow",
-      description: "GPS Antenna position.  Edit Server -> Settings"
+      description: "Optional - used to display size-accurate icon. GPS Antenna position. Edit Server -> Settings"
     },
     {
       path: "sensors.gps.fromCenter",
-      description: "GPS Antenna position.  Edit Server -> Settings"
+      description: "Optional - used to display size-accurate icon. GPS Antenna position. Edit Server -> Settings"
     },
   ];
 
@@ -178,9 +178,9 @@ module.exports = function (app) {
 
     app.setPluginStatus("Started");
 
-    // var delta = getAnchorAlarmDelta(app, "normal", "Started")
-    // app.handleMessage(plugin.id, delta)
-    // alarm_state = "normal"
+    var delta = getAnchorAlarmDelta(app, "normal", "Started")
+    app.handleMessage(plugin.id, delta)
+    alarm_state = "normal"
 
     configuration = props
     try {

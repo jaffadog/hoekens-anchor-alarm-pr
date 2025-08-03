@@ -218,8 +218,8 @@
         let anchorDistanceGuess = 0;
 
         //a couple different depths
-        let belowKeel;
-        let belowSurface;
+        let belowKeel = 0;
+        let belowSurface = 0;
         if (typeof data.environment.depth?.belowKeel?.value !== "undefined")
           belowKeel = data.environment.depth.belowKeel.value;
         if (typeof data.environment.depth?.belowSurface?.value !== "undefined")
@@ -249,7 +249,7 @@
           _aisShipType = data.design.aisShipType.value.id;
 
         //check our tide data
-        if (typeof data.environment.tide !== undefined) {
+        if (typeof data.environment?.tide !== "undefined") {
           let currentTide = estimateTideHeightSmooth(data.environment.tide.timeLow.value, data.environment.tide.heightLow.value, data.environment.tide.timeHigh.value, data.environment.tide.heightHigh.value);
           _tideDelta = data.environment.tide.heightHigh.value - currentTide;
         }
@@ -445,8 +445,8 @@
 
         //update our depth
         $.get('/signalk/v1/api/vessels/self/environment/depth', (data) => {
-          let belowSurface;
-          let belowKeel;
+          let belowSurface = 0;
+          let belowKeel = 0;
           if (data.hasOwnProperty('belowSurface'))
             belowSurface = data.belowSurface.value;
           if (data.hasOwnProperty('belowKeel'))
@@ -557,9 +557,6 @@
                 let aisShipType = 36;
                 let gpsXOffset = 0;
                 let gpsYOffset = 0;
-
-                console.log(vessel.name);
-                console.log(vessel.sensors.ais);
 
                 //load them if we got them.
                 if (typeof vessel.sensors.ais?.fromCenter?.value !== "undefined")
@@ -799,6 +796,8 @@
       }
 
       function updateScopeUI(dbs) {
+
+        dbs = parseFloat(dbs);
 
         let scope;
 
