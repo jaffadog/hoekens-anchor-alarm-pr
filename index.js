@@ -39,6 +39,10 @@ module.exports = function (app) {
       description: "Edit Server -> Settings"
     },
     {
+      path: "design.aisShipType",
+      description: "Edit Server -> Settings"
+    },
+    {
       path: "environment.depth.belowTransducer",
       description: "No depthsounder found."
     },
