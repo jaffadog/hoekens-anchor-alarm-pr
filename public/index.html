@@ -303,8 +303,8 @@
         let heading = data.headingTrue?.value;
         if (heading) {
           heading = rad2deg(heading);
-        } else {
-          heading = 0;
+        } else if (_twa) {
+          heading = _twa;
         }
         _heading = heading;
 
@@ -416,7 +416,7 @@
           if (heading) {
             heading = rad2deg(heading);
           } else {
-            heading = 0;
+            heading = Math.round(calculateBearing(_currentCoordinates.lat, _currentCoordinates.lng, _anchorCoordinates.lat, _anchorCoordinates.lng));
           }
           _heading = heading;
 
