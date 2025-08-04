@@ -27,6 +27,10 @@ module.exports = function (app) {
 
   let requiredPaths = [
     {
+      path: "navigation.position",
+      description: "Required - you need a GPS position of some sort to watch."
+    },
+    {
       path: "design.beam",
       description: "Optional - used to display size-accurate icon. Edit Server -> Settings"
     },
@@ -52,11 +56,11 @@ module.exports = function (app) {
     },
     {
       path: "environment.depth.belowSurface",
-      description: "Optional - used for scope calculations. Provided by plugin *derived-data*"
+      description: "Optional - used for scope calculations. Provided by plugin derived-data"
     },
     {
       path: "environment.tide",
-      description: "Optional - used for scope calculations. Tide data provided by plugin *signalk-tides*"
+      description: "Optional - used for scope calculations. Tide data provided by plugin signalk-tides"
     },
     {
       path: "propulsion",
