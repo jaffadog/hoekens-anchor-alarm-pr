@@ -158,10 +158,10 @@ module.exports = function (app) {
     for (const myPath of requiredPaths) {
       pathChecks[myPath.path] = {
         title: `${app.getSelfPath(myPath.path) ? '✅' : '❌'} ${myPath.path}`,
-        description: app.getSelfPath(myPath.path) ? null : myPath.description,
+        description: app.getSelfPath(myPath.path) ? "" : myPath.description,
         type: 'null',
         readOnly: true,
-        default: false
+        default: null
       };
     }
 
