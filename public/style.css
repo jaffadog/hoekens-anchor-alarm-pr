@@ -87,3 +87,13 @@ button {
 #anchorUp {
   display: none;
 }
+
+.anchorLineLabel textPath {
+  fill: black;
+  /* or whatever text color you want */
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.6);
+  /* transparent white "background" */
+  stroke-width: 3px;
+  /* thickness of the background */
+}
