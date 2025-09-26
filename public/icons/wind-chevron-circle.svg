@@ -1,0 +1,10 @@
+        <svg class="wind-chevron" width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <g fill="none" stroke="red" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="88 8    100 20   112 8"/>
+            <polyline points="88 20   100 32   112 20"/>
+            <polyline points="88 32   100 44   112 32"/>
+            <path d="M 120 22.5
+                    A 80 80 0 1 1 80 22.5"
+                  stroke="gray"/>
+          </g>
+        </svg>

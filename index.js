@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-const geolib = require('geolib')
+const turf = require('@turf/turf')
 
 const subscriberPeriod = 1000
 
@@ -140,6 +140,22 @@ module.exports = function (app) {
           description: "Used for saving state in case of SignalK restart.",
           default: 60
         },
+        segmentSize: {
+          type: "number",
+          title: "Segment Size (degrees)",
+          description: "Used for saving state in case of SignalK restart.",
+          minimum: 0,
+          maximum: 180,
+          default: 0
+        },
+        segmentOriention: {
+          type: "number",
+          title: "Segment Orientation (degrees)",
+          description: "Used for saving state in case of SignalK restart.",
+          minimum: 0,
+          maximum: 360,
+          default: 0
+        },
         position: {
           type: "object",
           title: "Anchor Position",
@@ -182,9 +198,9 @@ module.exports = function (app) {
 
     app.setPluginStatus("Started");
 
-    var delta = getAnchorAlarmDelta(app, "normal", "Started")
-    app.handleMessage(plugin.id, delta)
     alarm_state = "normal"
+    var delta = getAnchorAlarmDelta(app, alarm_state, "Started")
+    app.handleMessage(plugin.id, delta)
 
     configuration = props
     try {
@@ -238,7 +254,8 @@ module.exports = function (app) {
       if (typeof noPositionAlarmTime != 'undefined') {
         if (noPositionAlarmTime > 0) {
           positionWatchdogTimer = new Watchdog(noPositionAlarmTime * 1000, () => {
-            var delta = getAnchorAlarmDelta(app, "warn", `No position data received for ${noPositionAlarmTime} seconds.`);
+            alarm_state = "warn";
+            var delta = getAnchorAlarmDelta(app, alarm_state, `No position data received for ${noPositionAlarmTime} seconds.`);
             app.handleMessage(plugin.id, delta)
           });
         }
@@ -335,7 +352,12 @@ module.exports = function (app) {
       if (value == null) {
         raiseAnchor()
       } else {
-        var delta = getAnchorDelta(app, null, value, null, configuration["radius"], true, null);
+        var delta = getAnchorDelta({
+          app: app, 
+          anchorPosition: value,
+          maxRadius: configuration["radius"], 
+          isSet: true
+        })
         app.handleMessage(plugin.id, delta)
 
         configuration["position"] = { "latitude": parseFloat(value.latitude), "longitude": parseFloat(value.longitude) }
@@ -357,11 +379,14 @@ module.exports = function (app) {
 
   plugin.stop = function () {
     if (alarm_state != "normal") {
-      var delta = getAnchorAlarmDelta(app, "normal", "Stopped")
-      app.handleMessage(plugin.id, delta)
       alarm_state = "normal"
+      var delta = getAnchorAlarmDelta(app, alarm_state, "Stopped")
+      app.handleMessage(plugin.id, delta)
     }
-    var delta = getAnchorDelta(app, null, null, null, null, false, null)
+    var delta = getAnchorDelta({
+      app: app, 
+      isSet: false
+    })
     app.handleMessage(plugin.id, delta)
 
     stopWatchingPosition()
@@ -373,9 +398,9 @@ module.exports = function (app) {
     if (onStop.length > 0)
       return
 
-    var delta = getAnchorAlarmDelta(app, "normal", "Watching")
-    app.handleMessage(plugin.id, delta)
     alarm_state = "normal"
+    var delta = getAnchorAlarmDelta(app, alarm_state, "Watching")
+    app.handleMessage(plugin.id, delta)
 
     app.setPluginStatus("Watching");
 
@@ -402,14 +427,14 @@ module.exports = function (app) {
         app.setProviderError(err)
       },
       (delta) => {
-        let position, trueHeading
+        let vesselPosition, trueHeading
 
         if (delta.updates) {
           delta.updates.forEach(update => {
             if (update.values) {
               update.values.forEach(vp => {
                 if (vp.path === 'navigation.position') {
-                  position = vp.value
+                  vesselPosition = vp.value
                 } else if (vp.path === 'navigation.headingTrue') {
                   trueHeading = vp.value
                 }
@@ -418,19 +443,20 @@ module.exports = function (app) {
           })
         }
 
-        if (position) {
+        if (vesselPosition) {
           if (positionWatchdogTimer)
             positionWatchdogTimer.reset();
-          checkPosition(app, plugin, configuration.radius, position, configuration.position);
+          checkPosition(app, plugin, vesselPosition, configuration);
         }
+
       }
     )
   }
 
   function stopWatchingPosition() {
-    var delta = getAnchorAlarmDelta(app, "normal", "Off")
-    app.handleMessage(plugin.id, delta)
     alarm_state = "normal"
+    var delta = getAnchorAlarmDelta(app, alarm_state, "Off")
+    app.handleMessage(plugin.id, delta)
 
     if (positionWatchdogTimer)
       positionWatchdogTimer.stop();
@@ -444,11 +470,16 @@ module.exports = function (app) {
   function raiseAnchor() {
     app.debug("raise anchor")
 
-    var delta = getAnchorDelta(app, null, null, null, null, false, null)
+    var delta = getAnchorDelta({
+      app: app, 
+      isSet: false
+    })
     app.handleMessage(plugin.id, delta)
 
     delete configuration["position"]
     delete configuration["radius"]
+    delete configuration["segmentSize"]
+    delete configuration["segmentOriention"]
     configuration["on"] = false
 
     stopWatchingPosition()
@@ -473,9 +504,19 @@ module.exports = function (app) {
       else {
         app.debug("set anchor position to: " + position.latitude + " " + position.longitude)
         var radius = req.body['radius']
+        var segmentSize = req.body['segmentSize'] || 0;
+        var segmentOriention = req.body['segmentOriention'] || 0;
         if (typeof radius == 'undefined')
           radius = null
-        var delta = getAnchorDelta(app, null, position, 0, radius, true);
+        var delta = getAnchorDelta({
+          app: app, 
+          anchorPosition: position,
+          currentRadius: 0, 
+          maxRadius: radius,
+          segmentSize: segmentSize,
+          segmentOriention: segmentOriention,
+          isSet: true
+        })
         app.handleMessage(plugin.id, delta)
 
         //app.debug("anchor delta: " + JSON.stringify(delta))
@@ -485,6 +526,8 @@ module.exports = function (app) {
           "longitude": parseFloat(position.longitude)
         }
         configuration["radius"] = parseFloat(radius)
+        configuration["segmentSize"] = parseInt(segmentSize)
+        configuration["segmentOriention"] = parseInt(segmentOriention)
         configuration["on"] = true
 
         startWatchingPosition()
@@ -522,6 +565,8 @@ module.exports = function (app) {
       }
       else {
         var radius = req.body['radius']
+        var segmentSize = req.body['segmentSize'] || 0;
+        var segmentOriention = req.body['segmentOriention'] || 0;
         if (typeof radius == 'undefined') {
           app.debug("no position supplied")
           res.status(403)
@@ -534,11 +579,20 @@ module.exports = function (app) {
 
         app.debug("set anchor radius: " + radius)
 
-        var delta = getAnchorDelta(app, position, configuration.position, null,
-          radius, false, null);
+        var delta = getAnchorDelta({
+          app: app, 
+          vesselPosition: position, 
+          anchorPosition: configuration.position,
+          maxRadius: radius, 
+          segmentSize: segmentSize,
+          segmentOriention: segmentOriention,
+          isSet: false
+        })
         app.handleMessage(plugin.id, delta)
 
         configuration["radius"] = parseFloat(radius)
+        configuration["segmentSize"] = parseInt(segmentSize)
+        configuration["segmentOriention"] = parseInt(segmentOriention)
 
         try {
           savePluginOptions()
@@ -577,24 +631,23 @@ module.exports = function (app) {
     })
   }
 
-  function getAnchorDelta(app, vesselPosition, position,
-    currentRadius, maxRadius, isSet) {
+  function getAnchorDelta(params) {
     var values
 
-    if (vesselPosition == null) {
-      vesselPosition = app.getSelfPath('navigation.position.value')
+    if (params.vesselPosition == null) {
+      params.vesselPosition = params.app.getSelfPath('navigation.position.value')
     }
 
-    if (position) {
-      var position = {
-        "latitude": parseFloat(position.latitude),
-        "longitude": parseFloat(position.longitude)
+    if (params.anchorPosition) {
+      var anchorPosition = {
+        "latitude": parseFloat(params.anchorPosition.latitude),
+        "longitude": parseFloat(params.anchorPosition.longitude)
       };
 
       values = [
         {
           path: "navigation.anchor.position",
-          value: position
+          value: anchorPosition
         },
         {
           path: 'navigation.anchor.state',
@@ -602,15 +655,15 @@ module.exports = function (app) {
         }
       ]
 
-      if (currentRadius != null) {
+      if (params.currentRadius != null) {
         values.push({
           path: 'navigation.anchor.currentRadius',
-          value: parseFloat(currentRadius)
+          value: parseFloat(params.currentRadius)
         })
       }
 
-      if (maxRadius != null) {
-        maxRadius = parseFloat(maxRadius);
+      if (params.maxRadius != null) {
+        var maxRadius = parseFloat(params.maxRadius);
         values.push({
           path: 'navigation.anchor.maxRadius',
           value: maxRadius
@@ -634,6 +687,21 @@ module.exports = function (app) {
           }
         })
       }
+
+      if (params.segmentSize != null) {
+        values.push({
+          path: 'navigation.anchor.segmentSize',
+          value: parseInt(params.segmentSize)
+        })
+      }
+
+      if (params.segmentOriention != null) {
+        values.push({
+          path: 'navigation.anchor.segmentOriention',
+          value: parseInt(params.segmentOriention)
+        })
+      }
+
     }
     else {
       values = [
@@ -652,6 +720,14 @@ module.exports = function (app) {
         {
           path: 'navigation.anchor.maxRadius',
           value: null
+        },
+        {
+          path: 'navigation.anchor.segmentSize',
+          value: null
+        },
+        {
+          path: 'navigation.anchor.segmentOriention',
+          value: null
         }
       ]
     }
@@ -668,27 +744,56 @@ module.exports = function (app) {
     return delta;
   }
 
-  function checkPosition(app, plugin, radius, position, anchor_position) {
-    //app.debug("in checkPosition: " + position.latitude + ',' + anchor_position.latitude)
+  function checkPosition(app, plugin, vesselPosition, configuration) {
+    let maxRadius = configuration.radius
+    let anchorPosition = configuration.position
+    // app.debug("in checkPosition", vesselPosition, anchorPosition);
 
-    var meters = calc_distance(position.latitude, position.longitude,
-      anchor_position.latitude, anchor_position.longitude);
+    var currentRadius = calc_distance(
+      vesselPosition.latitude, vesselPosition.longitude,
+      anchorPosition.latitude, anchorPosition.longitude
+    );
 
     //app.debug("distance: " + meters + ", radius: " + radius);
 
-    var delta = getAnchorDelta(app, position, anchor_position, meters, radius, false)
+    var delta = getAnchorDelta({
+      app: app, 
+      vesselPosition: vesselPosition, 
+      anchorPosition: anchorPosition,
+      currentRadius: currentRadius, 
+      maxRadius: maxRadius, 
+      segmentSize: configuration.segmentSize,
+      segmentOriention: configuration.segmentOriention,      
+      isSet: false
+    })
     app.handleMessage(plugin.id, delta)
 
     let new_state = "normal";
     let do_update = false;
     let message = "Watching";
 
-    //compare our radius
-    if (radius != null && meters > radius) {
+    //dragging?
+    // wrap polygon calc in try/catch in case anything fails here
+    let vesselIsInAnchorAreaPolygon = false;
+    try {
+      const chordStart = (configuration.segmentOriention + configuration.segmentSize/2) || 0;
+      const chordEnd = (configuration.segmentOriention - configuration.segmentSize/2 + 360) || 360;
+      const arc = turf.lineArc([anchorPosition.longitude, anchorPosition.latitude], maxRadius, chordStart, chordEnd, {units:'meters'});
+      const anchorAreaPolygon = turf.lineToPolygon(arc);
+      vesselIsInAnchorAreaPolygon = turf.booleanPointInPolygon(turf.point([vesselPosition.longitude, vesselPosition.latitude]), anchorAreaPolygon);
+      //app.debug("anchorAreaPolygon",JSON.stringify(anchorAreaPolygon))
+    } catch (err) {
+      app.error("Error evaluating anchor area polygon", err);
+    }
+
+    // check both radius and polygon. we'll catch radius if polygon calc failed.
+    if (
+      (maxRadius && currentRadius > maxRadius)
+      || !vesselIsInAnchorAreaPolygon
+    ) {
       //okay, we're dragging.
       new_state = configuration.state;
-      let meters_rounded = Math.round(meters);
-      message = `Anchor Dragging (${meters_rounded}m)`;
+      message = `Anchor Dragging (${Math.round(currentRadius)}m)`;
 
       //how often should we send it?
       let interval = configuration["anchorAlarmInterval"];
@@ -712,11 +817,10 @@ module.exports = function (app) {
     }
 
     if (new_state !== alarm_state || do_update) {
-      var delta = getAnchorAlarmDelta(app, new_state, message)
+      alarm_state = new_state;
+      var delta = getAnchorAlarmDelta(app, alarm_state, message)
       app.debug("alarm state change: %j", delta)
       app.handleMessage(plugin.id, delta)
-
-      alarm_state = new_state;
 
       if (alarm_state == "normal")
         app.setPluginStatus("Watching");

@@ -16,6 +16,7 @@ Some of the changes I've made:
   * Plus, the act of turning on your engines will disable the alarm.  One less thing to do in an urgent situation.
 * Added a scope calculator that takes your current depth, height of your bow above water, and the estimated tidal rise and then shows you what your scope would be at 3:1, 4:1, 5:1, and 7:1.  This only shows when the anchor is up.  Install the [signalk-tides](https://github.com/bkeepers/signalk-tides) plugin to get tide data.
 * Boat icons are now location and size accurate.  With your beam, loa, and gps antenna position, it will size the icon to your boats true size and rotate it around the location of the GPS antenna.  This is very helpful if you want to pre-select your anchoring spot based on satellite imagery as you can position your bow right in the center of the circle to drop your anchor.  The alarm will trigger when your GPS antenna position goes outside the radius, so set that as usual.
+* Added ability to carve a segment off of the anchor circle - e.g. if you are anchored near an obsctruction.
 * Lots of UI improvements:
   * Added colors to the historical tracks.  Green = new, fading to red = old
   * Inital anchor position guess is now pretty accurate
@@ -25,6 +26,7 @@ Some of the changes I've made:
   * Cleaned up alarm radius UI
   * Increased the max zoom
   * Added other boats + their tracks
+  * Addded visual indication of wind direction
   * More responsive UI
   * Added a path checker field to the plugin config to make sure needed data is available.
 

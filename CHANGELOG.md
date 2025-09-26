@@ -1,4 +1,13 @@
-#v1.3
+# v1.4.0
+
+* added ability to carve a segment off of the anchor circle - e.g. if anchored near an obstruction
+* added visual indication of wind direction
+* dont display stale wind and depth data
+* changed default placement of gps antenna on other vessels when no offsets are avaialble
+* bugfix: corrected placement of gps antenna on other vessels when offsets are available
+* bugfix: alarm state not recovering from "No position data received"
+
+# v1.3
 
 * added a table to bottom right with various scope suggestions based on depth + bow height above water + tidal delta
 * plugin is now gps antenna location aware.  this makes calculation of the anchor bearing and distance more accurate
@@ -8,7 +17,7 @@
 * added required path checks to the plugin config page
 * added new icons based on ais type of the boat
 
-#v1.2
+# v1.2
 
 * removed openseamaps layer
 * updated UI positions for one hand use on mobile
