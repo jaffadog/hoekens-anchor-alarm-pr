@@ -1,3 +1,6 @@
 # Ignore artifacts:
 build
 coverage
+public/jquery*
+public/leaflet*
+public/turf*

@@ -41,7 +41,7 @@ button {
   cursor: pointer;
   border-radius: 4px;
   box-shadow: none;
-  border: 2px solid rgba(0,0,0,0.2);
+  border: 2px solid rgba(0, 0, 0, 0.2);
   padding: 4px;
   background-clip: padding-box;
   margin: 0 5px 10px;
@@ -61,7 +61,7 @@ button {
   background-color: rgba(255, 255, 255, 0.5);
   border-radius: 4px;
   box-shadow: none;
-  border: 2px solid rgba(0,0,0,0.2);
+  border: 2px solid rgba(0, 0, 0, 0.2);
   background-clip: padding-box;
 }
 
@@ -85,7 +85,6 @@ button {
   line-height: 1.1;
   background-color: white;
 }
-
 
 .info th,
 .scope th {

@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "$NODE $npm_package_main",
+    "format": "npx prettier . -w",
     "release": "git tag -d v$npm_package_version; git tag v$npm_package_version && git push --tags && git push && npm publish"
   },
   "keywords": [

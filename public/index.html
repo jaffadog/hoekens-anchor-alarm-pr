@@ -1,132 +1,152 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hoeken's Anchor Alarm</title>
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="favicons/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="favicons/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="favicons/favicon-16x16.png"
+    />
+    <link rel="manifest" href="site.webmanifest" />
 
-<head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hoeken's Anchor Alarm</title>
-  <link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
-  <link rel="manifest" href="site.webmanifest">
+    <link rel="preload" href="icons/anchor.png" as="image" />
+    <link rel="preload" href="icons/crosshair.png" as="image" />
 
-  <link rel="preload" href="icons/anchor.png" as="image">
-  <link rel="preload" href="icons/crosshair.png" as="image">
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="leaflet/leaflet.css" />
+    <script src="jquery-3.7.1.min.js"></script>
+    <script src="leaflet/leaflet.js"></script>
+    <script src="leaflet/leaflet.BoatMarker.js"></script>
+    <script src="leaflet/leaflet.hotline.js"></script>
+    <script src="leaflet/leaflet.textpath.js"></script>
+    <script src="turf.min.js"></script>
+  </head>
 
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="leaflet/leaflet.css" />
-  <script src="jquery-3.7.1.min.js"></script>
-  <script src="leaflet/leaflet.js"></script>
-  <script src="leaflet/leaflet.BoatMarker.js"></script>
-  <script src="leaflet/leaflet.hotline.js"></script>
-  <script src="leaflet/leaflet.textpath.js"></script>
-  <script src="turf.min.js"></script>
-</head>
-
-<body>
-  <div id="map_container">
-    <div id="map"></div>
-    <div id="map_toggle">
-      <div id='anchorDown'>
-        <button id='raiseAnchor'>Raise Anchor</button>
-      </div>
-      <div id='anchorUp'>
-        <button id='dropAnchor'>Drop Anchor</button><br />
-      </div>
-      <div id='radiusControl'>
-        <button id='decreaseRadius' class="square-button">-</button>
-        <button id='setRadius'><span id='radius'>0</span>m</button>
-        <button id='increaseRadius' class="square-button">+</button>
-        <button id='adjustAnchorAreaButton' class="square-button"><img src="icons/segment.svg" height="100%"/></button>
-      </div>
-      <div id="adjustAnchorAreaControl">
-        <div>
-          <label for="sizeRange">Segment Size</label>
-          <input id="sizeRange" type="range" min="0" max="180" value="0">
+  <body>
+    <div id="map_container">
+      <div id="map"></div>
+      <div id="map_toggle">
+        <div id="anchorDown">
+          <button id="raiseAnchor">Raise Anchor</button>
         </div>
-        <div>
-          <label for="orientationRange">Segment Orientation</label>
-          <input id="orientationRange" type="range" min="0" max="360" value="0">
+        <div id="anchorUp">
+          <button id="dropAnchor">Drop Anchor</button><br />
+        </div>
+        <div id="radiusControl">
+          <button id="decreaseRadius" class="square-button">-</button>
+          <button id="setRadius"><span id="radius">0</span>m</button>
+          <button id="increaseRadius" class="square-button">+</button>
+          <button id="adjustAnchorAreaButton" class="square-button">
+            <img src="icons/segment.svg" height="100%" />
+          </button>
+        </div>
+        <div id="adjustAnchorAreaControl">
+          <div>
+            <label for="sizeRange">Segment Size</label>
+            <input id="sizeRange" type="range" min="0" max="180" value="0" />
+          </div>
+          <div>
+            <label for="orientationRange">Segment Orientation</label>
+            <input
+              id="orientationRange"
+              type="range"
+              min="0"
+              max="360"
+              value="0"
+            />
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  <script>
+    <script>
+      // used for ageing out stale depth and wind data
+      const DATA_MAX_AGE = 300; // seconds
 
-    // used for ageing out stale depth and wind data
-    const DATA_MAX_AGE = 300; // seconds
+      let _currentCoordinates;
+      let _anchorCoordinates;
+      let _filterRadius = 500;
+      let _mmsi;
+      let _maxRadius = 50;
+      let _segmentOriention = 0;
+      let _segmentSize = 0;
+      let _vessels = {};
+      let _vesselTracks = {};
 
-    let _currentCoordinates;
-    let _anchorCoordinates;
-    let _filterRadius = 500;
-    let _mmsi;
-    let _maxRadius = 50;
-    let _segmentOriention = 0
-    let _segmentSize = 0
-    let _vessels = {};
-    let _vesselTracks = {};
+      let _heading = 0;
+      let _twd = null;
 
-    let _heading = 0;
-    let _twd = null;
+      // default vessel characteristics
+      let _boatLOA = 14;
+      let _boatBeam = 4;
+      let _aisShipType = 36;
+      let _gpsBowXDistance = 0; // distance from centerline. positive is SB.
+      let _gpsBowYDistance = _boatLOA * 0.75; // distance from bow
+      let _boatAnchorRollerHeight = 1;
+      let _tideDelta = 0;
 
-    // default vessel characteristics
-    let _boatLOA = 14;
-    let _boatBeam = 4;
-    let _aisShipType = 36;
-    let _gpsBowXDistance = 0; // distance from centerline. positive is SB.
-    let _gpsBowYDistance = _boatLOA * 0.75; // distance from bow
-    let _boatAnchorRollerHeight = 1;
-    let _tideDelta = 0;
+      let _isAnchored = false;
+      let _blockAnchorWatchUpdates = false;
 
-    let _isAnchored = false;
-    let _blockAnchorWatchUpdates = false;
+      let myBoatMarker;
+      let crosshairMarker;
+      let gpsAntennaMarker;
+      let anchorMarker;
+      let anchorAreaPolygon;
+      let windChevronMarker;
+      let currentWindChevronAngle = 0;
 
-    let myBoatMarker;
-    let crosshairMarker;
-    let gpsAntennaMarker;
-    let anchorMarker;
-    let anchorAreaPolygon;
-    let windChevronMarker;
-    let currentWindChevronAngle = 0;
-    
-    let map;
+      let map;
 
-    let anchorIcon = L.icon({
-      iconUrl: 'icons/anchor.png',
-      iconSize: [24, 24], // size of the icon
-      iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
-    });
+      let anchorIcon = L.icon({
+        iconUrl: "icons/anchor.png",
+        iconSize: [24, 24], // size of the icon
+        iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
+      });
 
-    let crosshairIcon = L.icon({
-      iconUrl: 'icons/crosshair.png',
-      iconSize: [24, 24], // size of the icon
-      iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
-    });
+      let crosshairIcon = L.icon({
+        iconUrl: "icons/crosshair.png",
+        iconSize: [24, 24], // size of the icon
+        iconAnchor: [12, 12], // point of the icon which will correspond to marker's location
+      });
 
-    crosshairMarker = L.marker([0, 0], {
-      icon: crosshairIcon,
-      draggable: true
-    });
+      crosshairMarker = L.marker([0, 0], {
+        icon: crosshairIcon,
+        draggable: true,
+      });
 
-    crosshairMarker.on('drag', function () {
-      _anchorCoordinates = crosshairMarker.getLatLng();
-      updateAnchorLine();
-      updateAnchorAreaPolygon();
-    });
+      crosshairMarker.on("drag", function () {
+        _anchorCoordinates = crosshairMarker.getLatLng();
+        updateAnchorLine();
+        updateAnchorAreaPolygon();
+      });
 
-    anchorMarker = L.marker([0, 0], {
-      icon: anchorIcon,
-      interactive: false
-    });
+      anchorMarker = L.marker([0, 0], {
+        icon: anchorIcon,
+        interactive: false,
+      });
 
-    let gpsAntennaIcon = L.icon({
-      iconUrl: 'icons/antenna.svg',
-      iconSize: [25, 25], // size of the icon
-      iconAnchor: [13, 25], // point of the icon which will correspond to marker's location
-    });
+      let gpsAntennaIcon = L.icon({
+        iconUrl: "icons/antenna.svg",
+        iconSize: [25, 25], // size of the icon
+        iconAnchor: [13, 25], // point of the icon which will correspond to marker's location
+      });
 
-    const chevronSVG = `
+      const chevronSVG = `
       <svg class="wind-chevron" width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
         <g fill="none" stroke="red" stroke-width="3" opacity="0.8" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="88 8    100 20   112 8"/>
@@ -139,51 +159,58 @@
       </svg>
     `;
 
-    const windChevronIcon = L.divIcon({
-      className: 'no-styles-for-me',
-      html: chevronSVG,
-      iconSize: [200, 200],
-      iconAnchor: [100, 100] // center anchor
-    });
+      const windChevronIcon = L.divIcon({
+        className: "no-styles-for-me",
+        html: chevronSVG,
+        iconSize: [200, 200],
+        iconAnchor: [100, 100], // center anchor
+      });
 
-    let anchorLine;
-    let anchorLineAngle;
+      let anchorLine;
+      let anchorLineAngle;
 
-    let urlParams = new URLSearchParams(window.location.search);
+      let urlParams = new URLSearchParams(window.location.search);
 
-    let satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      maxZoom: 23,
-      maxNativeZoom: 17,      // Highest zoom level Esri has real imagery for
-      tileSize: 256,
-      noWrap: true,
-      keepBuffer: 5
-    });
+      let satelliteLayer = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          attribution:
+            "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+          maxZoom: 23,
+          maxNativeZoom: 17, // Highest zoom level Esri has real imagery for
+          tileSize: 256,
+          noWrap: true,
+          keepBuffer: 5,
+        },
+      );
 
-    let osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'Map data from OpenStreetMap (OSM)',
-      maxZoom: 23
-    });
+      let osmLayer = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          attribution: "Map data from OpenStreetMap (OSM)",
+          maxZoom: 23,
+        },
+      );
 
-    let baseMaps = {
-      "OpenStreetMap": osmLayer,
-      "Satellite": satelliteLayer
-    };
+      let baseMaps = {
+        OpenStreetMap: osmLayer,
+        Satellite: satelliteLayer,
+      };
 
-    // Define the info box control
-    const InfoBoxControl = L.Control.extend({
-      options: {
-        position: 'bottomright' // 'topleft', 'topright', 'bottomleft', 'bottomright'
-      },
+      // Define the info box control
+      const InfoBoxControl = L.Control.extend({
+        options: {
+          position: "bottomright", // 'topleft', 'topright', 'bottomleft', 'bottomright'
+        },
 
-      onAdd: function (map) {
-        // Create a container div with a class
-        const container = L.DomUtil.create('div', 'info leaflet-bar');
+        onAdd: function (map) {
+          // Create a container div with a class
+          const container = L.DomUtil.create("div", "info leaflet-bar");
 
-        // Prevent events from being propagated to the map
-        L.DomEvent.disableClickPropagation(container);
+          // Prevent events from being propagated to the map
+          L.DomEvent.disableClickPropagation(container);
 
-        container.innerHTML = `
+          container.innerHTML = `
             <table>
               <tr>
                 <th>Depth:</th>
@@ -200,27 +227,27 @@
             </table>
         `;
 
-        container.id = "infoUI";
+          container.id = "infoUI";
 
-        return container;
-      }
-    });
+          return container;
+        },
+      });
 
-    // Define the info box control
-    const ScopeBoxControl = L.Control.extend({
-      options: {
-        position: 'bottomright' // 'topleft', 'topright', 'bottomleft', 'bottomright'
-      },
+      // Define the info box control
+      const ScopeBoxControl = L.Control.extend({
+        options: {
+          position: "bottomright", // 'topleft', 'topright', 'bottomleft', 'bottomright'
+        },
 
-      onAdd: function (map) {
-        // Create a container div with a class
-        const container = L.DomUtil.create('div', 'scope leaflet-bar');
+        onAdd: function (map) {
+          // Create a container div with a class
+          const container = L.DomUtil.create("div", "scope leaflet-bar");
 
-        // Prevent events from being propagated to the map
-        L.DomEvent.disableClickPropagation(container);
+          // Prevent events from being propagated to the map
+          L.DomEvent.disableClickPropagation(container);
 
-        container.id = "scopeUI";
-        container.innerHTML = `
+          container.id = "scopeUI";
+          container.innerHTML = `
             <table>
               <tr>
                 <th>Water&nbsp;Depth</th>
@@ -260,1086 +287,1236 @@
             </table>
         `;
 
-        return container;
-      }
-    });
+          return container;
+        },
+      });
 
-    //this is our initial data lookup call.  Needs to happen first.
-    $.get('/signalk/v1/api/vessels/self')
-      .done(function(self) {
-        _mmsi = self.mmsi;
+      //this is our initial data lookup call.  Needs to happen first.
+      $.get("/signalk/v1/api/vessels/self")
+        .done(function (self) {
+          _mmsi = self.mmsi;
 
-        //depth
-        let belowSurface = self.environment?.depth?.belowSurface?.value || 0;
+          //depth
+          let belowSurface = self.environment?.depth?.belowSurface?.value || 0;
 
-        //save our parameters for boat size + gps position
-        if (typeof self.design?.length?.value !== "undefined")
-          _boatLOA = parseFloat(self.design.length.value.overall);
-        if (typeof self.design?.beam?.value !== "undefined")
-          _boatBeam = parseFloat(self.design.beam?.value);
-        if (typeof self.design?.bowAnchorRollerHeight?.value !== "undefined")
-          _boatAnchorRollerHeight = parseFloat(self.design.bowAnchorRollerHeight?.value);
-        if (typeof self.sensors?.gps?.fromBow?.value !== "undefined")
-          _gpsBowYDistance = self.sensors.gps.fromBow.value;
-        else
-          _gpsBowYDistance = _boatLOA / 2;
-        if (typeof self.sensors?.gps?.fromCenter?.value !== "undefined")
-          _gpsBowXDistance = self.sensors.gps.fromCenter.value;
-        if (typeof self.design?.aisShipType?.value?.id !== "undefined")
-          _aisShipType = self.design.aisShipType.value.id;
+          //save our parameters for boat size + gps position
+          if (typeof self.design?.length?.value !== "undefined")
+            _boatLOA = parseFloat(self.design.length.value.overall);
+          if (typeof self.design?.beam?.value !== "undefined")
+            _boatBeam = parseFloat(self.design.beam?.value);
+          if (typeof self.design?.bowAnchorRollerHeight?.value !== "undefined")
+            _boatAnchorRollerHeight = parseFloat(
+              self.design.bowAnchorRollerHeight?.value,
+            );
+          if (typeof self.sensors?.gps?.fromBow?.value !== "undefined")
+            _gpsBowYDistance = self.sensors.gps.fromBow.value;
+          else _gpsBowYDistance = _boatLOA / 2;
+          if (typeof self.sensors?.gps?.fromCenter?.value !== "undefined")
+            _gpsBowXDistance = self.sensors.gps.fromCenter.value;
+          if (typeof self.design?.aisShipType?.value?.id !== "undefined")
+            _aisShipType = self.design.aisShipType.value.id;
 
-        //check our tide data
-        if (typeof self.environment?.tide !== "undefined") {
-          let currentTide = estimateTideHeightSmooth(self.environment.tide.timeLow.value, self.environment.tide.heightLow.value, self.environment.tide.timeHigh.value, self.environment.tide.heightHigh.value);
-          _tideDelta = self.environment.tide.heightHigh.value - currentTide;
-        }
-
-        // get current position
-        if (self.navigation?.position) 
-          _currentCoordinates = L.latLng(self.navigation.position.value.latitude, self.navigation.position.value.longitude);
-        else {
-          alert("No GPS Position Data");
-          return;
-        }
-
-        //init our map
-        map = L.map('map', {
-          zoomControl: false,
-        }).setView(_currentCoordinates, 5);
-
-        //default to satellite
-        satelliteLayer.addTo(map);
-
-        //add scale control
-        L.control.scale({
-          position: 'topleft' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
-        }).addTo(map);
-
-        //add zoom control
-        L.control.zoom({
-          position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
-        }).addTo(map);
-
-        //add layer control
-        let layerControl = L.control.layers(baseMaps, {}, {
-          position: 'topright' // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
-        }).addTo(map);
-
-        // Infobox for status
-        const infoBox = new InfoBoxControl();
-        map.addControl(infoBox);
-
-        // ScopeBox for scope suggestion
-        const scopeBox = new ScopeBoxControl();
-        map.addControl(scopeBox);
-
-        // adjust wind chevron placement as boat icon scale changes on zoom
-        map.on('zoomend', function() {
-          updateWindChevronMarker();
-        });
-
-        // clode anchor area control when the map is clicked
-        map.on('click',function() {
-          $("#adjustAnchorAreaControl").hide();
-        });
-
-        //calculate the x offset from the left side, not center
-        let xOffset = _boatBeam / 2 + _gpsBowXDistance;
-
-        //marker for our boat
-        myBoatMarker = new L.BoatMarker(_currentCoordinates, {
-          beam: _boatBeam,
-          loa: _boatLOA,
-          gpsOffset: { x: xOffset, y: _gpsBowYDistance },
-          heading: 0, //heading,
-          icon: getShipTypeIcon(_aisShipType, _boatLOA / _boatBeam),
-          interactive: false
-        }).addTo(map)
-
-        //marker for our boat's antenna
-        gpsAntennaMarker = L.marker(_currentCoordinates, {
-          icon: gpsAntennaIcon,
-          interactive: false
-        }).addTo(map);
-
-        //our anchoring area
-        _anchorCoordinates = map.getCenter();
-        anchorAreaPolygon = L.polygon([], {
-          color: 'green', 
-          interactive: false
-        }).addTo(map);
-
-        anchorLine = L.polyline([_currentCoordinates, _anchorCoordinates], {
-          color: 'grey',
-          weight: 2,
-          interactive: false
-        }).addTo(map);
-
-        anchorLineAngle = L.polyline([_currentCoordinates, _anchorCoordinates], {
-          color: 'grey',
-          weight: 0,
-          interactive: false
-        }).addTo(map);
-
-        windChevronMarker = L.marker([0,0], { 
-          icon: windChevronIcon,
-          interactive: false
-        });
-
-        // now that we have all of the markers and lines on the map, lets fully update the UI:
-        updateSelf(self);
-
-        // if we are not anchored, setup lazy-mode: guess anchor position and max radius
-        if (!_isAnchored) {
-          //try to guess where to put the anchor.
-          let anchorDistanceGuess = calculateScope(5, belowSurface) || 15; // default to 15 meters if no depth avaialble
-
-          //our radius defaults.
-          _maxRadius = anchorDistanceGuess;
-          _maxRadius += calculateVectorDistance(_gpsBowXDistance, _gpsBowYDistance);
-          _maxRadius *= 1.5;
-          _maxRadius = Math.round(_maxRadius / 5) * 5; //multiples of 5
-          _maxRadius = Math.max(20, _maxRadius); // minimum 20 meters
-          _maxRadius = Math.min(200, _maxRadius); // maximum 200 meters
-
-          let bowPos = calculateBowCoordinates(_currentCoordinates, _heading, _gpsBowXDistance, _gpsBowYDistance);
-          let anchorPositionGuess = calculateDestinationPoint(bowPos.lat, bowPos.lng, _heading, anchorDistanceGuess);
-          _anchorCoordinates = L.latLng(anchorPositionGuess.latitude, anchorPositionGuess.longitude);
-          raiseAnchor();
-        }
-
-        //zoom baby zoom.
-        map.fitBounds(anchorAreaPolygon.getBounds());
-
-        //load up all the other vessels.
-        $.get(`/signalk/v1/api/tracks?radius=${_filterRadius}`, (tracks) => {
-          const mmsiRegex = /urn:mrn:imo:mmsi:(\d+)$/;
-          for (uri in tracks) {
-            const match = uri.match(mmsiRegex);
-            if (match) {
-              let mmsi = match[1];
-              let data = tracks[uri];
-
-              if (data.coordinates[0].length) {
-
-                let history = data.coordinates[0];
-
-                let points = [];
-                let i = 0;
-                for (let position of history) {
-                  let lat = position[1];
-                  let lon = position[0];
-                  let distance = calculateDistance(_currentCoordinates.lat, _currentCoordinates.lng, lat, lon);
-
-                  if (distance < _filterRadius) {
-                    points.push([lat, lon, i]);
-                    i++;
-                  }
-                }
-
-                _vesselTracks[mmsi] = L.hotline(points, {
-                  color: 'red',
-                  weight: 1,
-                  min: 0,
-                  max: points.length,
-                  palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
-                  outlineWidth: 0,
-                  text: '',
-                  interactive: false
-                }).addTo(map);
-              }
-            }
+          //check our tide data
+          if (typeof self.environment?.tide !== "undefined") {
+            let currentTide = estimateTideHeightSmooth(
+              self.environment.tide.timeLow.value,
+              self.environment.tide.heightLow.value,
+              self.environment.tide.timeHigh.value,
+              self.environment.tide.heightHigh.value,
+            );
+            _tideDelta = self.environment.tide.heightHigh.value - currentTide;
           }
-        });
 
-        //start our interval updater
-        setInterval(intervalUpdate, 1000);
-      })
-      .fail(function(jqXHR, textStatus, errorThrown) {
-        console.error("Error:", textStatus, errorThrown);
-        alert( "error" );
-        return;
-      })
+          // get current position
+          if (self.navigation?.position)
+            _currentCoordinates = L.latLng(
+              self.navigation.position.value.latitude,
+              self.navigation.position.value.longitude,
+            );
+          else {
+            alert("No GPS Position Data");
+            return;
+          }
 
-    function updateAnchorAreaPolygon() {
-      // update ui
-      $('#radius').html(_maxRadius);
-      $('#sizeRange').val(_segmentSize);
-      $('#orientationRange').val(_segmentOriention);
+          //init our map
+          map = L.map("map", {
+            zoomControl: false,
+          }).setView(_currentCoordinates, 5);
 
-      //update polygon
-      const chordStart = (_segmentOriention + _segmentSize/2) || 0;
-      const chordEnd = (_segmentOriention - _segmentSize/2 + 360) || 360;
-      const arc = turf.lineArc([_anchorCoordinates.lng,_anchorCoordinates.lat], _maxRadius, chordStart, chordEnd, {units:'meters'});
-      const coords = turf.getCoords(turf.flip(arc));
-      anchorAreaPolygon.setLatLngs(coords);
+          //default to satellite
+          satelliteLayer.addTo(map);
 
-      if (
-        !anchorAreaPolygon.isEmpty()
-        && !turf.booleanPointInPolygon(turf.point([myBoatMarker.getLatLng().lng,myBoatMarker.getLatLng().lat]), anchorAreaPolygon.toGeoJSON())
-      ) 
-        anchorAreaPolygon.setStyle({ 'color': 'red' });
-      else if (_isAnchored)
-        anchorAreaPolygon.setStyle({ 'color': 'green' });
-      else
-        anchorAreaPolygon.setStyle({ 'color': 'blue' });
+          //add scale control
+          L.control
+            .scale({
+              position: "topleft", // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+            })
+            .addTo(map);
 
-    }
+          //add zoom control
+          L.control
+            .zoom({
+              position: "topright", // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+            })
+            .addTo(map);
 
-    //live update of data 
-    function intervalUpdate() {
-      $.get('/signalk/v1/api/vessels')
-        .done(function (vessels) {
-          // update our vessel
-          let self = vessels[`urn:mrn:imo:mmsi:${_mmsi}`];
+          //add layer control
+          let layerControl = L.control
+            .layers(
+              baseMaps,
+              {},
+              {
+                position: "topright", // Options: 'topleft', 'topright', 'bottomleft', 'bottomright'
+              },
+            )
+            .addTo(map);
+
+          // Infobox for status
+          const infoBox = new InfoBoxControl();
+          map.addControl(infoBox);
+
+          // ScopeBox for scope suggestion
+          const scopeBox = new ScopeBoxControl();
+          map.addControl(scopeBox);
+
+          // adjust wind chevron placement as boat icon scale changes on zoom
+          map.on("zoomend", function () {
+            updateWindChevronMarker();
+          });
+
+          // clode anchor area control when the map is clicked
+          map.on("click", function () {
+            $("#adjustAnchorAreaControl").hide();
+          });
+
+          //calculate the x offset from the left side, not center
+          let xOffset = _boatBeam / 2 + _gpsBowXDistance;
+
+          //marker for our boat
+          myBoatMarker = new L.BoatMarker(_currentCoordinates, {
+            beam: _boatBeam,
+            loa: _boatLOA,
+            gpsOffset: { x: xOffset, y: _gpsBowYDistance },
+            heading: 0, //heading,
+            icon: getShipTypeIcon(_aisShipType, _boatLOA / _boatBeam),
+            interactive: false,
+          }).addTo(map);
+
+          //marker for our boat's antenna
+          gpsAntennaMarker = L.marker(_currentCoordinates, {
+            icon: gpsAntennaIcon,
+            interactive: false,
+          }).addTo(map);
+
+          //our anchoring area
+          _anchorCoordinates = map.getCenter();
+          anchorAreaPolygon = L.polygon([], {
+            color: "green",
+            interactive: false,
+          }).addTo(map);
+
+          anchorLine = L.polyline([_currentCoordinates, _anchorCoordinates], {
+            color: "grey",
+            weight: 2,
+            interactive: false,
+          }).addTo(map);
+
+          anchorLineAngle = L.polyline(
+            [_currentCoordinates, _anchorCoordinates],
+            {
+              color: "grey",
+              weight: 0,
+              interactive: false,
+            },
+          ).addTo(map);
+
+          windChevronMarker = L.marker([0, 0], {
+            icon: windChevronIcon,
+            interactive: false,
+          });
+
+          // now that we have all of the markers and lines on the map, lets fully update the UI:
           updateSelf(self);
 
-          // update other vessels
-          updateOtherVessels(vessels);
-      })
-      .fail(function() {
-        alert("ERROR: Can't reach SignalK sever");
-      });
-    }
+          // if we are not anchored, setup lazy-mode: guess anchor position and max radius
+          if (!_isAnchored) {
+            //try to guess where to put the anchor.
+            let anchorDistanceGuess = calculateScope(5, belowSurface) || 15; // default to 15 meters if no depth avaialble
 
-    // update our vessel
-    function updateSelf(self) {
+            //our radius defaults.
+            _maxRadius = anchorDistanceGuess;
+            _maxRadius += calculateVectorDistance(
+              _gpsBowXDistance,
+              _gpsBowYDistance,
+            );
+            _maxRadius *= 1.5;
+            _maxRadius = Math.round(_maxRadius / 5) * 5; //multiples of 5
+            _maxRadius = Math.max(20, _maxRadius); // minimum 20 meters
+            _maxRadius = Math.min(200, _maxRadius); // maximum 200 meters
+
+            let bowPos = calculateBowCoordinates(
+              _currentCoordinates,
+              _heading,
+              _gpsBowXDistance,
+              _gpsBowYDistance,
+            );
+            let anchorPositionGuess = calculateDestinationPoint(
+              bowPos.lat,
+              bowPos.lng,
+              _heading,
+              anchorDistanceGuess,
+            );
+            _anchorCoordinates = L.latLng(
+              anchorPositionGuess.latitude,
+              anchorPositionGuess.longitude,
+            );
+            raiseAnchor();
+          }
+
+          //zoom baby zoom.
+          map.fitBounds(anchorAreaPolygon.getBounds());
+
+          //load up all the other vessels.
+          $.get(`/signalk/v1/api/tracks?radius=${_filterRadius}`, (tracks) => {
+            const mmsiRegex = /urn:mrn:imo:mmsi:(\d+)$/;
+            for (uri in tracks) {
+              const match = uri.match(mmsiRegex);
+              if (match) {
+                let mmsi = match[1];
+                let data = tracks[uri];
+
+                if (data.coordinates[0].length) {
+                  let history = data.coordinates[0];
+
+                  let points = [];
+                  let i = 0;
+                  for (let position of history) {
+                    let lat = position[1];
+                    let lon = position[0];
+                    let distance = calculateDistance(
+                      _currentCoordinates.lat,
+                      _currentCoordinates.lng,
+                      lat,
+                      lon,
+                    );
+
+                    if (distance < _filterRadius) {
+                      points.push([lat, lon, i]);
+                      i++;
+                    }
+                  }
+
+                  _vesselTracks[mmsi] = L.hotline(points, {
+                    color: "red",
+                    weight: 1,
+                    min: 0,
+                    max: points.length,
+                    palette: { 0.0: "red", 0.5: "yellow", 1.0: "green" },
+                    outlineWidth: 0,
+                    text: "",
+                    interactive: false,
+                  }).addTo(map);
+                }
+              }
+            }
+          });
+
+          //start our interval updater
+          setInterval(intervalUpdate, 1000);
+        })
+        .fail(function () {
+          alert("ERROR: Can't reach SignalK sever");
+          return;
+        });
+
+      function updateAnchorAreaPolygon() {
+        // update ui
+        $("#radius").html(_maxRadius);
+        $("#sizeRange").val(_segmentSize);
+        $("#orientationRange").val(_segmentOriention);
+
+        //update polygon
+        const chordStart = _segmentOriention + _segmentSize / 2 || 0;
+        const chordEnd = _segmentOriention - _segmentSize / 2 + 360 || 360;
+        const arc = turf.lineArc(
+          [_anchorCoordinates.lng, _anchorCoordinates.lat],
+          _maxRadius,
+          chordStart,
+          chordEnd,
+          { units: "meters" },
+        );
+        const coords = turf.getCoords(turf.flip(arc));
+        anchorAreaPolygon.setLatLngs(coords);
+
+        if (
+          !anchorAreaPolygon.isEmpty() &&
+          !turf.booleanPointInPolygon(
+            turf.point([
+              myBoatMarker.getLatLng().lng,
+              myBoatMarker.getLatLng().lat,
+            ]),
+            anchorAreaPolygon.toGeoJSON(),
+          )
+        )
+          anchorAreaPolygon.setStyle({ color: "red" });
+        else if (_isAnchored) anchorAreaPolygon.setStyle({ color: "green" });
+        else anchorAreaPolygon.setStyle({ color: "blue" });
+      }
+
+      //live update of data
+      function intervalUpdate() {
+        $.get("/signalk/v1/api/vessels")
+          .done(function (vessels) {
+            // update our vessel
+            let self = vessels[`urn:mrn:imo:mmsi:${_mmsi}`];
+            updateSelf(self);
+
+            // update other vessels
+            updateOtherVessels(vessels);
+          })
+          .fail(function () {
+            alert("ERROR: Can't reach SignalK sever");
+          });
+      }
+
+      // update our vessel
+      function updateSelf(self) {
         updateDepth(self.environment?.depth);
         updateAWS(self.environment?.wind?.speedApparent);
         updateTWD(self.environment?.wind?.directionTrue);
         updateAnchorWatch(self.navigation?.anchor); // update anchor before vessel - so that we have an anchor position to point vessel to
         updateVesselPosition(self.navigation);
         updateAnchorStatus(self.notifications?.navigation?.anchor);
-    }
-
-    //update our position
-    function updateVesselPosition(navigation) {
-      if (!navigation || !navigation.position) return;
-      _currentCoordinates = L.latLng(navigation.position.value.latitude, navigation.position.value.longitude);
-
-      //load our heading value
-      //try heading sensor:
-      if (navigation.headingTrue?.value) {
-        _heading = rad2deg(navigation.headingTrue?.value);
-      } 
-      //no heading data?  try pointing to our anchor.
-      else if (navigation.anchor?.position){
-        _heading = Math.round(calculateBearing(_currentCoordinates.lat, _currentCoordinates.lng, _anchorCoordinates.lat, _anchorCoordinates.lng));
-      }
-      //no anchor?  into the wind then.
-      else if (_twd != null) {
-        _heading = _twd;
       }
 
-      //update our markers
-      myBoatMarker.setLatLng(_currentCoordinates);
-      myBoatMarker.setHeading(_heading);
-      gpsAntennaMarker.setLatLng(_currentCoordinates);
+      //update our position
+      function updateVesselPosition(navigation) {
+        if (!navigation || !navigation.position) return;
+        _currentCoordinates = L.latLng(
+          navigation.position.value.latitude,
+          navigation.position.value.longitude,
+        );
 
-      //add to our scribble
-      if (_vesselTracks[_mmsi]) {
-        _vesselTracks[_mmsi].addLatLng([_currentCoordinates.lat, _currentCoordinates.lng, _vesselTracks[_mmsi].getLatLngs().length]);
-        _vesselTracks[_mmsi].options.max++;
-      }
-
-      //redraw our anchor line
-      updateAnchorLine();
-    }
-
-    //what is our current status?
-    function updateAnchorStatus(alarm) {
-      if (!alarm || !alarm.value) return;
-      $('#pluginStatus').html(alarm.value.message);
-      $('#pluginStatus').removeClass();
-      if (alarm.value.message != 'Off')
-        $('#pluginStatus').addClass(alarm.value.state);
-    }
-
-    //update our depth
-    function updateDepth(depth) {
-      if (!depth || !depth.belowSurface || isStale(depth.belowSurface.timestamp)) {
-        $('#belowSurface').html("~");
-        $('#belowKeel').html("~");
-        return;
-      }
-
-      let belowSurface = 0;
-      let belowKeel = 0;
-      if (depth.hasOwnProperty('belowSurface'))
-        belowSurface = depth.belowSurface.value;
-      if (depth.hasOwnProperty('belowKeel'))
-        belowKeel = depth.belowKeel.value;
-
-      updateDepthUI(belowSurface, belowKeel);
-      updateScopeUI(belowSurface);
-    }
-
-    //update wind speed
-    function updateAWS(windSpeedApparent) {
-      if (!windSpeedApparent || isStale(windSpeedApparent.timestamp)) {
-        $('#awsValue').html("~");
-        return;
-      }
-      let kts = Math.round(windSpeedApparent.value * 1.94384);
-      $('#awsValue').html(`${kts}kts`);
-    }
-
-    //update wind angle
-    function updateTWD(windDirectionTrue) {
-      if (!windDirectionTrue || isStale(windDirectionTrue.timestamp)) {
-        _twd = null;
-        $('#awaValue').html("~");
-        return;
-      }
-      _twd = normalizeAngle(Math.round(rad2deg(windDirectionTrue.value)));
-      $('#awaValue').html(`${_twd}°`);
-      updateWindChevronMarker();
-    }
-
-    function isStale(ts) {
-      const date = new Date(ts);
-      const ageInSecs = (Date.now() - date) / 1000;
-      return ageInSecs > DATA_MAX_AGE;
-    }
-
-    //update our watch status - self.navigation?.anchor
-    function updateAnchorWatch(anchorStatus) {
-      if (!anchorStatus || _blockAnchorWatchUpdates) return;
-      if (anchorStatus.state.value === "on") {
-        _maxRadius = anchorStatus.maxRadius.value || 20;
-        _segmentSize = parseInt(anchorStatus.segmentSize?.value) || 0;
-        _segmentOriention = parseInt(anchorStatus.segmentOriention?.value) || 0;
-        _anchorCoordinates = L.latLng(anchorStatus.position.value.latitude, anchorStatus.position.value.longitude);
-        updateAnchorAreaPolygon();
-
-        //switch to anchored?
-        if (!_isAnchored) {
-          dropAnchor();
+        //load our heading value
+        //try heading sensor:
+        if (navigation.headingTrue?.value) {
+          _heading = rad2deg(navigation.headingTrue?.value);
         }
-      }
-      //switch off anchored?
-      else if (_isAnchored) {
-        raiseAnchor();
-      }
-    }
-
-    function updateOtherVessels(vessels) {
-      //update any other vessels and their tracks.
-      let detectedVessels = [];
-      for (let key in vessels) {
-        let vessel = vessels[key];
-        if (vessel.mmsi == _mmsi) {
-          continue;
+        //no heading data?  try pointing to our anchor.
+        else if (navigation.anchor?.position) {
+          _heading = Math.round(
+            calculateBearing(
+              _currentCoordinates.lat,
+              _currentCoordinates.lng,
+              _anchorCoordinates.lat,
+              _anchorCoordinates.lng,
+            ),
+          );
         }
-        if (!("navigation" in vessel) || !("position" in vessel.navigation)) {
-          continue;
+        //no anchor?  into the wind then.
+        else if (_twd != null) {
+          _heading = _twd;
         }
 
-        //are they moving?
-        let vessel_sog = 0;
-        if (typeof vessel.navigation?.speedOverGround?.value !== "undefined")
-          vessel_sog = vessel.navigation.speedOverGround.value * 1.94384;
+        //update our markers
+        myBoatMarker.setLatLng(_currentCoordinates);
+        myBoatMarker.setHeading(_heading);
+        gpsAntennaMarker.setLatLng(_currentCoordinates);
 
-        //try to figure out where they are pointing
-        let vessel_heading = 0;
+        //add to our scribble
+        if (_vesselTracks[_mmsi]) {
+          _vesselTracks[_mmsi].addLatLng([
+            _currentCoordinates.lat,
+            _currentCoordinates.lng,
+            _vesselTracks[_mmsi].getLatLngs().length,
+          ]);
+          _vesselTracks[_mmsi].options.max++;
+        }
 
-        //heading would be best.... but it doesnt show up in AIS very often
-        if (typeof vessel.navigation?.headingTrue?.value !== "undefined")
-          vessel_heading = rad2deg(vessel.navigation.headingTrue.value);
-        //COG works, but is really wonky - lets only use when they are moving
-        else if (typeof vessel.navigation?.courseOverGroundTrue?.value !== "undefined" && vessel_sog > 1)
-          vessel_heading = rad2deg(vessel.navigation.courseOverGroundTrue.value);
-        //true wind angle looks the cleanest on the map
-        else if (_twd !== null)
-          vessel_heading = _twd;
-        //if nothing else is available, have other vessels point the same direction as us 
-        else if (!_heading)
-          vessel_heading = _heading;
+        //redraw our anchor line
+        updateAnchorLine();
+      }
 
-        //where are they?
-        let position = vessel.navigation.position.value;
-        let distance = calculateDistance(position.latitude, position.longitude, _currentCoordinates.lat, _currentCoordinates.lng);
+      //what is our current status?
+      function updateAnchorStatus(alarm) {
+        if (!alarm || !alarm.value) return;
+        $("#pluginStatus").html(alarm.value.message);
+        $("#pluginStatus").removeClass();
+        if (alarm.value.message != "Off")
+          $("#pluginStatus").addClass(alarm.value.state);
+      }
 
-        //only show vessels in our radius
-        if (distance <= _filterRadius) {
-          detectedVessels.push(vessel.mmsi);
-          distance = Math.round(distance);
+      //update our depth
+      function updateDepth(depth) {
+        if (
+          !depth ||
+          !depth.belowSurface ||
+          isStale(depth.belowSurface.timestamp)
+        ) {
+          $("#belowSurface").html("~");
+          $("#belowKeel").html("~");
+          return;
+        }
 
-          //have we seen them already?
-          if (vessel.mmsi in _vessels) {
-            _vessels[vessel.mmsi].setLatLng([position.latitude, position.longitude]);
-            _vessels[vessel.mmsi].setHeading(vessel_heading);
-            _vessels[vessel.mmsi]._popup.setContent(`${vessel.name} at ${distance} meters`);
-            _vessels[vessel.mmsi].gpsAntennaMarker.setLatLng([position.latitude, position.longitude]);
+        let belowSurface = 0;
+        let belowKeel = 0;
+        if (depth.hasOwnProperty("belowSurface"))
+          belowSurface = depth.belowSurface.value;
+        if (depth.hasOwnProperty("belowKeel"))
+          belowKeel = depth.belowKeel.value;
 
-            //do we have a track for them?
-            if (_vesselTracks[vessel.mmsi]) {
-              let lastPosition = _vesselTracks[vessel.mmsi].getLatLngs().at(-1);
-              if (lastPosition && (lastPosition.lat != position.latitude || lastPosition.lng != position.longitude)) {
-                _vesselTracks[vessel.mmsi].addLatLng([position.latitude, position.longitude, _vesselTracks[vessel.mmsi].options.max]);
-                _vesselTracks[vessel.mmsi].options.max++;
+        updateDepthUI(belowSurface, belowKeel);
+        updateScopeUI(belowSurface);
+      }
+
+      //update wind speed
+      function updateAWS(windSpeedApparent) {
+        if (!windSpeedApparent || isStale(windSpeedApparent.timestamp)) {
+          $("#awsValue").html("~");
+          return;
+        }
+        let kts = Math.round(windSpeedApparent.value * 1.94384);
+        $("#awsValue").html(`${kts}kts`);
+      }
+
+      //update wind angle
+      function updateTWD(windDirectionTrue) {
+        if (!windDirectionTrue || isStale(windDirectionTrue.timestamp)) {
+          _twd = null;
+          $("#awaValue").html("~");
+          return;
+        }
+        _twd = normalizeAngle(Math.round(rad2deg(windDirectionTrue.value)));
+        $("#awaValue").html(`${_twd}°`);
+        updateWindChevronMarker();
+      }
+
+      function isStale(ts) {
+        const date = new Date(ts);
+        const ageInSecs = (Date.now() - date) / 1000;
+        return ageInSecs > DATA_MAX_AGE;
+      }
+
+      //update our watch status - self.navigation?.anchor
+      function updateAnchorWatch(anchorStatus) {
+        if (!anchorStatus || _blockAnchorWatchUpdates) return;
+        if (anchorStatus.state.value === "on") {
+          _maxRadius = anchorStatus.maxRadius.value || 20;
+          _segmentSize = parseInt(anchorStatus.segmentSize?.value) || 0;
+          _segmentOriention =
+            parseInt(anchorStatus.segmentOriention?.value) || 0;
+          _anchorCoordinates = L.latLng(
+            anchorStatus.position.value.latitude,
+            anchorStatus.position.value.longitude,
+          );
+          updateAnchorAreaPolygon();
+
+          //switch to anchored?
+          if (!_isAnchored) {
+            dropAnchor();
+          }
+        }
+        //switch off anchored?
+        else if (_isAnchored) {
+          raiseAnchor();
+        }
+      }
+
+      function updateOtherVessels(vessels) {
+        //update any other vessels and their tracks.
+        let detectedVessels = [];
+        for (let key in vessels) {
+          let vessel = vessels[key];
+          if (vessel.mmsi == _mmsi) {
+            continue;
+          }
+          if (!("navigation" in vessel) || !("position" in vessel.navigation)) {
+            continue;
+          }
+
+          //are they moving?
+          let vessel_sog = 0;
+          if (typeof vessel.navigation?.speedOverGround?.value !== "undefined")
+            vessel_sog = vessel.navigation.speedOverGround.value * 1.94384;
+
+          //try to figure out where they are pointing
+          let vessel_heading = 0;
+
+          //heading would be best.... but it doesnt show up in AIS very often
+          if (typeof vessel.navigation?.headingTrue?.value !== "undefined")
+            vessel_heading = rad2deg(vessel.navigation.headingTrue.value);
+          //COG works, but is really wonky - lets only use when they are moving
+          else if (
+            typeof vessel.navigation?.courseOverGroundTrue?.value !==
+              "undefined" &&
+            vessel_sog > 1
+          )
+            vessel_heading = rad2deg(
+              vessel.navigation.courseOverGroundTrue.value,
+            );
+          //true wind angle looks the cleanest on the map
+          else if (_twd !== null) vessel_heading = _twd;
+          //if nothing else is available, have other vessels point the same direction as us
+          else if (!_heading) vessel_heading = _heading;
+
+          //where are they?
+          let position = vessel.navigation.position.value;
+          let distance = calculateDistance(
+            position.latitude,
+            position.longitude,
+            _currentCoordinates.lat,
+            _currentCoordinates.lng,
+          );
+
+          //only show vessels in our radius
+          if (distance <= _filterRadius) {
+            detectedVessels.push(vessel.mmsi);
+            distance = Math.round(distance);
+
+            //have we seen them already?
+            if (vessel.mmsi in _vessels) {
+              _vessels[vessel.mmsi].setLatLng([
+                position.latitude,
+                position.longitude,
+              ]);
+              _vessels[vessel.mmsi].setHeading(vessel_heading);
+              _vessels[vessel.mmsi]._popup.setContent(
+                `${vessel.name} at ${distance} meters`,
+              );
+              _vessels[vessel.mmsi].gpsAntennaMarker.setLatLng([
+                position.latitude,
+                position.longitude,
+              ]);
+
+              //do we have a track for them?
+              if (_vesselTracks[vessel.mmsi]) {
+                let lastPosition = _vesselTracks[vessel.mmsi]
+                  .getLatLngs()
+                  .at(-1);
+                if (
+                  lastPosition &&
+                  (lastPosition.lat != position.latitude ||
+                    lastPosition.lng != position.longitude)
+                ) {
+                  _vesselTracks[vessel.mmsi].addLatLng([
+                    position.latitude,
+                    position.longitude,
+                    _vesselTracks[vessel.mmsi].options.max,
+                  ]);
+                  _vesselTracks[vessel.mmsi].options.max++;
+                }
               }
-            }
-            //nope, create their info
-          } else {
+              //nope, create their info
+            } else {
+              //default values
+              let loa = 14;
+              let beam = 4;
+              let aisShipType = 36;
+              let gpsXOffset = 0;
+              let gpsYOffset = loa * 0.75;
 
-            //default values
-            let loa = 14;
-            let beam = 4
-            let aisShipType = 36;
-            let gpsXOffset = 0;
-            let gpsYOffset = loa * 0.75;
+              //load them if we got them.
+              if (typeof vessel.sensors.ais?.fromCenter?.value !== "undefined")
+                gpsXOffset = parseFloat(vessel.sensors.ais.fromCenter.value);
+              if (typeof vessel.sensors.ais?.fromBow?.value !== "undefined")
+                gpsYOffset = parseFloat(vessel.sensors.ais.fromBow.value);
+              if (typeof vessel.design?.length?.value !== "undefined")
+                loa = parseFloat(vessel.design.length.value.overall);
+              if (typeof vessel.design?.beam?.value !== "undefined")
+                beam = parseFloat(vessel.design.beam.value);
+              if (typeof vessel.design?.aisShipType?.value?.id !== "undefined")
+                aisShipType = vessel.design.aisShipType.value.id;
 
-            //load them if we got them.
-            if (typeof vessel.sensors.ais?.fromCenter?.value !== "undefined")
-              gpsXOffset = parseFloat(vessel.sensors.ais.fromCenter.value);
-            if (typeof vessel.sensors.ais?.fromBow?.value !== "undefined")
-              gpsYOffset = parseFloat(vessel.sensors.ais.fromBow.value);
-            if (typeof vessel.design?.length?.value !== "undefined")
-              loa = parseFloat(vessel.design.length.value.overall);
-            if (typeof vessel.design?.beam?.value !== "undefined")
-              beam = parseFloat(vessel.design.beam.value);
-            if (typeof vessel.design?.aisShipType?.value?.id !== "undefined")
-              aisShipType = vessel.design.aisShipType.value.id;
+              //calculate the x offset from the left side, not center
+              let xOffset = beam / 2 + gpsXOffset;
 
-            //calculate the x offset from the left side, not center
-            let xOffset = beam / 2 + gpsXOffset;
+              //create our boat marker
+              _vessels[vessel.mmsi] = new L.BoatMarker(
+                [position.latitude, position.longitude],
+                {
+                  beam: beam,
+                  loa: loa,
+                  gpsOffset: { x: xOffset, y: gpsYOffset },
+                  heading: vessel_heading,
+                  icon: getShipTypeIcon(aisShipType, loa / beam),
+                },
+              );
+              _vessels[vessel.mmsi]
+                .addTo(map)
+                .bindPopup(`${vessel.name} at ${distance} meters`);
 
-            //create our boat marker
-            _vessels[vessel.mmsi] = new L.BoatMarker([position.latitude, position.longitude], {
-              beam: beam,
-              loa: loa,
-              gpsOffset: { x: xOffset, y: gpsYOffset },
-              heading: vessel_heading,
-              icon: getShipTypeIcon(aisShipType, loa / beam)
-            });
-            _vessels[vessel.mmsi].addTo(map).bindPopup(`${vessel.name} at ${distance} meters`);
+              //marker for our boat's antenna
+              _vessels[vessel.mmsi].gpsAntennaMarker = L.marker(
+                [position.latitude, position.longitude],
+                {
+                  icon: gpsAntennaIcon,
+                  interactive: false,
+                },
+              ).addTo(map);
 
-            //marker for our boat's antenna
-            _vessels[vessel.mmsi].gpsAntennaMarker = L.marker([position.latitude, position.longitude], {
-              icon: gpsAntennaIcon,
-              interactive: false
-            }).addTo(map);
-
-            //make sure we didnt load their track already.
-            if (vessel.mmsi in _vesselTracks === false) {
-              _vesselTracks[vessel.mmsi] = L.hotline([[position.latitude, position.longitude, 0]], {
-                color: 'red',
-                weight: 1,
-                min: 0,
-                max: 1,
-                palette: { 0.0: 'red', 0.5: 'yellow', 1.0: 'green' },
-                outlineWidth: 0,
-                text: ''
-              }).addTo(map);
+              //make sure we didnt load their track already.
+              if (vessel.mmsi in _vesselTracks === false) {
+                _vesselTracks[vessel.mmsi] = L.hotline(
+                  [[position.latitude, position.longitude, 0]],
+                  {
+                    color: "red",
+                    weight: 1,
+                    min: 0,
+                    max: 1,
+                    palette: { 0.0: "red", 0.5: "yellow", 1.0: "green" },
+                    outlineWidth: 0,
+                    text: "",
+                  },
+                ).addTo(map);
+              }
             }
           }
         }
-      }
-      for (let mmsi in _vessels) {
-        if (!detectedVessels.includes(mmsi)) {
-          map.removeLayer(_vessels[mmsi]);
-          delete _vessels[mmsi];
-          map.removeLayer(_vesselTracks[mmsi]);
-          delete _vesselTracks[mmsi];
+        for (let mmsi in _vessels) {
+          if (!detectedVessels.includes(mmsi)) {
+            map.removeLayer(_vessels[mmsi]);
+            delete _vessels[mmsi];
+            map.removeLayer(_vesselTracks[mmsi]);
+            delete _vesselTracks[mmsi];
+          }
         }
       }
-    }
 
-    $('#raiseAnchor').click(() => {
-      let agree = confirm('Do you really want to disable your anchor alarm?');
-      if (agree) {
+      $("#raiseAnchor").click(() => {
+        let agree = confirm("Do you really want to disable your anchor alarm?");
+        if (agree) {
+          _blockAnchorWatchUpdates = true;
+          raiseAnchor(); //better UI response outside.
+          $.post("/plugins/hoekens-anchor-alarm/raiseAnchor")
+            .fail((response) => {
+              if (response.status == 401) location.href = "/admin/#/login";
+            })
+            .always(() => {
+              _blockAnchorWatchUpdates = false;
+            });
+        }
+      });
+
+      $("#dropAnchor").click(() => {
+        _anchorCoordinates = crosshairMarker.getLatLng();
         _blockAnchorWatchUpdates = true;
-        raiseAnchor(); //better UI response outside.
-        $.post('/plugins/hoekens-anchor-alarm/raiseAnchor')
-          .fail((response) => {
-            if (response.status == 401)
-              location.href = "/admin/#/login";
-          })
-          .always(() => {
-            _blockAnchorWatchUpdates = false;
-          });
-      }
-    });
-
-    $('#dropAnchor').click(() => {
-      _anchorCoordinates = crosshairMarker.getLatLng();
-      _blockAnchorWatchUpdates = true;
-      dropAnchor(); //better UI response outside.
-      let newPosition = { latitude: _anchorCoordinates.lat, longitude: _anchorCoordinates.lng };
-      $.post('/plugins/hoekens-anchor-alarm/dropAnchor', { position: newPosition, radius: _maxRadius, segmentSize: _segmentSize, segmentOriention: _segmentOriention })
-        .fail((response) => {
-          if (response.status == 401)
-            location.href = "/admin/#/login";
+        dropAnchor(); //better UI response outside.
+        let newPosition = {
+          latitude: _anchorCoordinates.lat,
+          longitude: _anchorCoordinates.lng,
+        };
+        $.post("/plugins/hoekens-anchor-alarm/dropAnchor", {
+          position: newPosition,
+          radius: _maxRadius,
+          segmentSize: _segmentSize,
+          segmentOriention: _segmentOriention,
         })
-        .always(() => {
-          _blockAnchorWatchUpdates = false;
-        });
-    });
-
-    $('#setRadius').click(() => {
-      let newRadius = parseInt(prompt('Enter Radius (m)', _maxRadius))
-      if (!newRadius || newRadius <= 0)
-        return;
-
-      _maxRadius = newRadius;
-      updateAnchorAreaPolygon();
-      postNewRadius();
-    });
-
-    $('#increaseRadius').click(() => {
-      _maxRadius = parseInt(_maxRadius) + 5;
-      updateAnchorAreaPolygon();
-      postNewRadius();
-    });
-
-    $('#decreaseRadius').click(() => {
-      _maxRadius = parseInt(_maxRadius);
-      if (_maxRadius <= 5)
-        return;
-
-      _maxRadius = _maxRadius - 5;
-      updateAnchorAreaPolygon();
-      postNewRadius();
-    });
-
-    $('#adjustAnchorAreaButton').click(() => {
-      $("#adjustAnchorAreaControl").toggle();
-    });
-
-    $('#sizeRange,#orientationRange').on('input', function(){
-      _blockAnchorWatchUpdates = true;
-      _segmentSize = parseInt($('#sizeRange').val());
-      _segmentOriention = parseInt($('#orientationRange').val());
-      updateAnchorAreaPolygon();
-    });
-
-    // pointerup works for both mouse and touch
-    $('#sizeRange,#orientationRange').on('pointerup', function(){
-      postNewRadius();
-      _blockAnchorWatchUpdates = false;
-    });
-
-    function postNewRadius() {
-      if (_isAnchored) {
-        _blockAnchorWatchUpdates = true;
-        $.post('/plugins/hoekens-anchor-alarm/setRadius', { radius: _maxRadius, segmentSize: _segmentSize, segmentOriention: _segmentOriention })
           .fail((response) => {
-            if (response.status == 401)
-              location.href = "/admin/#/login";
+            if (response.status == 401) location.href = "/admin/#/login";
           })
           .always(() => {
             _blockAnchorWatchUpdates = false;
           });
-      }
-    }
-
-    function dropAnchor() {
-      $('#anchorDown').show();
-      $('#anchorUp').hide();
-      $('#scopeUI').hide();
-      $('#infoUI').show();
-
-      _isAnchored = true;
-
-      map.removeLayer(crosshairMarker);
-
-      anchorMarker.setLatLng(_anchorCoordinates);
-      map.addLayer(anchorMarker);
-
-      updateAnchorAreaPolygon();
-    }
-
-    function raiseAnchor() {
-      $('#anchorUp').show();
-      $('#anchorDown').hide();
-      $('#infoUI').hide();
-      $('#scopeUI').show();
-      $('#adjustAnchorAreaControl').hide();
-
-      _isAnchored = false;
-      _segmentSize = 0;
-      _segmentOriention = 0;
-
-      map.removeLayer(anchorMarker);
-
-      crosshairMarker.setLatLng(_anchorCoordinates);
-      map.addLayer(crosshairMarker);
-
-      updateAnchorAreaPolygon();
-      updateAnchorLine();
-    }
-
-    function updateDepthUI(dbs, dbk) {
-      let output;
-
-      if (typeof dbs !== "undefined")
-        dbs = Math.round(dbs * 10) / 10;
-      else
-        dbs = '~'
-
-      if (typeof dbk !== "undefined")
-        dbk = Math.round(dbk * 10) / 10;
-      else
-        dbk = '~'
-
-      $('#belowSurface').html(`${dbs}m`);
-      $('#belowKeel').html(`${dbk}m`);
-    }
-
-    function updateScopeUI(dbs) {
-
-      dbs = parseFloat(dbs);
-
-      let scope;
-
-      let maxHeight = dbs;
-
-      //the height of our bow roller.
-      maxHeight += _boatAnchorRollerHeight;
-
-      //the delta between now and high tide.
-      maxHeight += _tideDelta;
-
-      scope = calculateScope(7, dbs);
-      scope = scope.toFixed(1);
-      $('#scope7to1').html(`${scope}m`);
-
-      scope = calculateScope(5, dbs);
-      scope = scope.toFixed(1);
-      $('#scope5to1').html(`${scope}m`);
-
-      scope = calculateScope(4, dbs);
-      scope = scope.toFixed(1);
-      $('#scope4to1').html(`${scope}m`);
-
-      scope = calculateScope(3, dbs);
-      scope = scope.toFixed(1);
-      $('#scope3to1').html(`${scope}m`);
-
-      let dbsDisplay = dbs.toFixed(1);
-      $('#scopeDepth').html(`${dbsDisplay}m`);
-
-      let bowHeightDisplay = _boatAnchorRollerHeight.toFixed(1);
-      $('#bowHeight').html(`${bowHeightDisplay}m`);
-
-      let tideDelta = _tideDelta.toFixed(1);
-      $('#tideDelta').html(`${tideDelta}m`);
-
-      maxHeight = maxHeight.toFixed(1);
-      $('#scopeTotal').html(`${maxHeight}m`);
-
-    }
-
-    function calculateScope(scope, dbs) {
-
-      //start with depth
-      let maxHeight = dbs;
-
-      //the height of our bow roller.
-      maxHeight += _boatAnchorRollerHeight;
-
-      //the delta between now and high tide.
-      maxHeight += _tideDelta;
-
-      //okay, send it back.
-      let total = maxHeight * scope;
-
-      return total;
-    }
-
-    function updateAnchorLine() {
-
-      let _bowCoordinates = calculateBowCoordinates(_currentCoordinates, _heading, _gpsBowXDistance, _gpsBowYDistance);
-
-      anchorLine.setLatLngs([_bowCoordinates, _anchorCoordinates]);
-      anchorLineAngle.setLatLngs([_bowCoordinates, _anchorCoordinates]); // this duplicate on is so we can have 2 text labels
-
-      //this will fail if you're anchored exactly on the equator, lol.
-      let flip = false;
-      if (_bowCoordinates.lng > _anchorCoordinates.lng)
-        flip = true;
-
-      let distance = calculateDistance(_bowCoordinates.lat, _bowCoordinates.lng, _anchorCoordinates.lat, _anchorCoordinates.lng);
-      distance = Math.round(distance * 10) / 10;
-
-      anchorLine.setText("");
-      anchorLine.setText(`${distance}m`, {
-        orientation: flip ? 'flip' : 0,
-        offset: 12,
-        center: true,
-        attributes: {
-          class: "anchorLineLabel"
-        }
       });
 
-      const bearing = Math.round(calculateBearing(_bowCoordinates.lat, _bowCoordinates.lng, _anchorCoordinates.lat, _anchorCoordinates.lng));
+      $("#setRadius").click(() => {
+        let newRadius = parseInt(prompt("Enter Radius (m)", _maxRadius));
+        if (!newRadius || newRadius <= 0) return;
 
-      anchorLineAngle.setText("");
-      anchorLineAngle.setText(`${bearing}°`, {
-        orientation: flip ? 'flip' : 0,
-        offset: -3,
-        center: true,
-        attributes: {
-          class: "anchorLineLabel"
-        }
+        _maxRadius = newRadius;
+        updateAnchorAreaPolygon();
+        postNewRadius();
       });
 
-    }
+      $("#increaseRadius").click(() => {
+        _maxRadius = parseInt(_maxRadius) + 5;
+        updateAnchorAreaPolygon();
+        postNewRadius();
+      });
 
-    function updateWindChevronMarker() {
-      if (!myBoatMarker || !windChevronMarker) return;
+      $("#decreaseRadius").click(() => {
+        _maxRadius = parseInt(_maxRadius);
+        if (_maxRadius <= 5) return;
 
-      if (_twd == null) {
-        map.removeLayer(windChevronMarker);
-        return;
-      } else if (!map.hasLayer(windChevronMarker)) {
-        map.addLayer(windChevronMarker);
+        _maxRadius = _maxRadius - 5;
+        updateAnchorAreaPolygon();
+        postNewRadius();
+      });
+
+      $("#adjustAnchorAreaButton").click(() => {
+        $("#adjustAnchorAreaControl").toggle();
+      });
+
+      $("#sizeRange,#orientationRange").on("input", function () {
+        _blockAnchorWatchUpdates = true;
+        _segmentSize = parseInt($("#sizeRange").val());
+        _segmentOriention = parseInt($("#orientationRange").val());
+        updateAnchorAreaPolygon();
+      });
+
+      // pointerup works for both mouse and touch
+      $("#sizeRange,#orientationRange").on("pointerup", function () {
+        postNewRadius();
+        _blockAnchorWatchUpdates = false;
+      });
+
+      function postNewRadius() {
+        if (_isAnchored) {
+          _blockAnchorWatchUpdates = true;
+          $.post("/plugins/hoekens-anchor-alarm/setRadius", {
+            radius: _maxRadius,
+            segmentSize: _segmentSize,
+            segmentOriention: _segmentOriention,
+          })
+            .fail((response) => {
+              if (response.status == 401) location.href = "/admin/#/login";
+            })
+            .always(() => {
+              _blockAnchorWatchUpdates = false;
+            });
+        }
       }
 
-      // get center of our boat 
-      const center = calculateBowCoordinates(myBoatMarker.getLatLng(), _heading, _gpsBowXDistance, _gpsBowYDistance - _boatLOA/2);
+      function dropAnchor() {
+        $("#anchorDown").show();
+        $("#anchorUp").hide();
+        $("#scopeUI").hide();
+        $("#infoUI").show();
 
-      windChevronMarker.setLatLng(center);
-      
-      // rotate through the shortest path - e.g. when shifting from 350deg to 10deg
-      let newAngle = normalizeAngle(_twd);
-      let oldAngle = normalizeAngle(currentWindChevronAngle);
-      let delta = newAngle - oldAngle;
-      if (delta > 180) delta -= 360;
-      if (delta < -180) delta += 360;
-      currentWindChevronAngle += delta;
+        _isAnchored = true;
 
-      const chevron = windChevronMarker.getElement().querySelector(".wind-chevron");
-      chevron.style.transform = `rotate(${currentWindChevronAngle}deg) `;
-    }
+        map.removeLayer(crosshairMarker);
 
-    function getShipTypeIcon(aisShipType, aspectRatio) {
-      let icon = "icons/ships/png/default.png";
+        anchorMarker.setLatLng(_anchorCoordinates);
+        map.addLayer(anchorMarker);
 
-      aisShipType = parseInt(aisShipType);
-
-      // console.log(aisShipType);
-      // console.log(aspectRatio);
-
-      switch (aisShipType) {
-        case 20: // Wing in ground (WIG), all ships of this type
-        case 21: // Wing in ground (WIG), Hazardous category A
-        case 22: // Wing in ground (WIG), Hazardous category B
-        case 23: // Wing in ground (WIG), Hazardous category C
-        case 24: // Wing in ground (WIG), Hazardous category D
-        case 25: // Wing in ground (WIG), Reserved for future use
-        case 26: // Wing in ground (WIG), Reserved for future use
-        case 27: // Wing in ground (WIG), Reserved for future use
-        case 28: // Wing in ground (WIG), Reserved for future use
-        case 29: // Wing in ground (WIG), Reserved for future use
-          icon = "icons/ships/png/wing-in-ground.png";
-          break;
-
-        case 30: // Fishing
-          icon = "icons/ships/png/fishing.png";
-          break;
-
-        case 31: // Towing
-        case 32: // Towing: length exceeds 200m or breadth exceeds 25m
-          icon = "icons/ships/png/towing.png";
-          break;
-
-        case 33: // Dredging or underwater ops
-          icon = "icons/ships/png/dredging.png";
-          break;
-
-        case 34: // Diving ops
-          icon = "icons/ships/png/diving.png";
-          break;
-
-        case 35: // Military ops
-          icon = "icons/ships/png/military.png";
-          break;
-
-        case 36: // Sailing
-          if (aspectRatio >= 2.5)
-            icon = "icons/ships/png/sailboat.png";
-          else
-            icon = "icons/ships/png/catamaran.png"
-          break;
-
-        case 37: // Pleasure Craft
-          icon = "icons/ships/png/pleasure.png";
-          break;
-
-        case 40: // High speed craft (HSC), all ships of this type
-        case 41: // High speed craft (HSC), Hazardous category A
-        case 42: // High speed craft (HSC), Hazardous category B
-        case 43: // High speed craft (HSC), Hazardous category C
-        case 44: // High speed craft (HSC), Hazardous category D
-        case 45: // High speed craft (HSC), Reserved for future use
-        case 46: // High speed craft (HSC), Reserved for future use
-        case 47: // High speed craft (HSC), Reserved for future use
-        case 48: // High speed craft (HSC), Reserved for future use
-        case 49: // High speed craft (HSC), No additional information
-          icon = "icons/ships/png/high-speed-craft.png";
-          break;
-
-        case 50: // Pilot Vessel
-          icon = "icons/ships/png/pilot.png";
-          break;
-
-        case 51: // Search and Rescue vessel
-          icon = "icons/ships/png/sar.png";
-          break;
-
-        case 52: // Tug
-          icon = "icons/ships/png/tug.png";
-          break;
-
-        case 53: // Port Tender
-          icon = "icons/ships/png/port-tender.png";
-          break;
-
-        case 54: // Anti-pollution equipment
-          icon = "icons/ships/png/anti-pollution.png";
-          break;
-
-        case 55: // Law Enforcement
-          icon = "icons/ships/png/police.png";
-          break;
-
-        case 58: // Medical Transport
-          icon = "icons/ships/png/medical.png";
-          break;
-
-        case 59: // Noncombatant ship according to RR Resolution No. 18
-          icon = "icons/ships/png/noncombatant.png";
-          break;
-
-        case 60: // Passenger, all ships of this type
-        case 61: // Passenger, Hazardous category A
-        case 62: // Passenger, Hazardous category B
-        case 63: // Passenger, Hazardous category C
-        case 64: // Passenger, Hazardous category D
-        case 65: // Passenger, Reserved for future use
-        case 66: // Passenger, Reserved for future use
-        case 67: // Passenger, Reserved for future use
-        case 68: // Passenger, Reserved for future use
-        case 69: // Passenger, No additional information
-          icon = "icons/ships/png/passenger.png";
-          break;
-
-        case 70: // Cargo, all ships of this type
-        case 71: // Cargo, Hazardous category A
-        case 72: // Cargo, Hazardous category B
-        case 73: // Cargo, Hazardous category C
-        case 74: // Cargo, Hazardous category D
-        case 75: // Cargo, Reserved for future use
-        case 76: // Cargo, Reserved for future use
-        case 77: // Cargo, Reserved for future use
-        case 78: // Cargo, Reserved for future use
-        case 79: // Cargo, No additional information
-          icon = "icons/ships/png/cargo.png";
-          break;
-
-        case 80: // Tanker, all ships of this type
-        case 81: // Tanker, Hazardous category A
-        case 82: // Tanker, Hazardous category B
-        case 83: // Tanker, Hazardous category C
-        case 84: // Tanker, Hazardous category D
-        case 85: // Tanker, Reserved for future use
-        case 86: // Tanker, Reserved for future use
-        case 87: // Tanker, Reserved for future use
-        case 88: // Tanker, Reserved for future use
-        case 89: // Tanker, No additional information
-          icon = "icons/ships/png/tanker.png";
-          break;
-
-        case 90: // Other Type, all ships of this type
-        case 91: // Other Type, Hazardous category A
-        case 92: // Other Type, Hazardous category B
-        case 93: // Other Type, Hazardous category C
-        case 94: // Other Type, Hazardous category D
-        case 95: // Other Type, Reserved for future use
-        case 96: // Other Type, Reserved for future use
-        case 97: // Other Type, Reserved for future use
-        case 98: // Other Type, Reserved for future use
-        case 99: // Other Type, no additional information
-          icon = "icons/ships/png/other.png";
-          break;
-
-        // 0 	Not available (default)
-        // 1-19 	Reserved for future use
-        // 38 	Reserved
-        // 39 	Reserved
-        // 56 	Spare - Local Vessel
-        // 57 	Spare - Local Vessel
-        default:
-          break;
+        updateAnchorAreaPolygon();
       }
 
-      return icon;
-    }
+      function raiseAnchor() {
+        $("#anchorUp").show();
+        $("#anchorDown").hide();
+        $("#infoUI").hide();
+        $("#scopeUI").show();
+        $("#adjustAnchorAreaControl").hide();
 
-    function calculateBowCoordinates(gpsPosition, heading, xOffset, yOffset) {
-      var distance = Math.sqrt(xOffset**2 + yOffset**2);
-      var bearing = heading - rad2deg(Math.atan(xOffset/yOffset));
-      var destination = turf.destination([gpsPosition.lng, gpsPosition.lat], distance, bearing, {units: "meters"});
-      return L.latLng(turf.getCoord(turf.flip(destination)));
-    }
+        _isAnchored = false;
+        _segmentSize = 0;
+        _segmentOriention = 0;
 
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-      let R = 6371000; // Radius of the earth in m
-      let dLat = deg2rad(lat2 - lat1);  // deg2rad below
-      let dLon = deg2rad(lon2 - lon1);
-      let a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2)
-        ;
-      let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      let d = R * c; // Distance in km
-      return d;
-    }
+        map.removeLayer(anchorMarker);
 
-    function deg2rad(deg) {
-      return deg * (Math.PI / 180)
-    }
+        crosshairMarker.setLatLng(_anchorCoordinates);
+        map.addLayer(crosshairMarker);
 
-    // Convert radians to degrees
-    function rad2deg(radians) {
-      return radians * 180 / Math.PI;
-    }
-
-    function calculateBearing(lat1, lon1, lat2, lon2) {
-      // Convert latitude and longitude from degrees to radians
-      var θa = deg2rad(lat1);
-      var θb = deg2rad(lat2);
-      var ΔL = deg2rad(lon2 - lon1);
-
-      // Calculate X and Y using the provided formulas
-      var X = Math.cos(θb) * Math.sin(ΔL);
-      var Y = Math.cos(θa) * Math.sin(θb) - Math.sin(θa) * Math.cos(θb) * Math.cos(ΔL);
-
-      // Calculate the initial bearing (β) in radians
-      var β = Math.atan2(X, Y);
-
-      // Convert the bearing from radians to degrees
-      var bearing = rad2deg(β);
-
-      // Normalize the bearing to be between 0° and 360°
-      bearing = normalizeAngle(bearing);
-
-      return bearing;
-    }
-
-    /**
-     * Calculates the destination point given starting latitude and longitude,
-     * bearing, and distance using the haversine formula.
-     *
-     * @param {number} lat1 - Starting latitude in degrees.
-     * @param {number} lon1 - Starting longitude in degrees.
-     * @param {number} bearing - Bearing in degrees (clockwise from north).
-     * @param {number} distance - Distance to travel from the starting point in meters.
-     * @returns {{ latitude: number, longitude: number }} - The destination latitude and longitude.
-     */
-    function calculateDestinationPoint(lat1, lon1, bearing, distance) {
-
-      //console.log(`lat: ${lat1}, lon: ${lon1}, bearing: ${bearing}, distance: ${distance}`);
-      const R = 6371e3; // Earth's radius in meters
-
-      // Convert input values to radians
-      const φ1 = (lat1 * Math.PI) / 180;
-      const λ1 = (lon1 * Math.PI) / 180;
-      const θ = (bearing * Math.PI) / 180;
-      const δ = distance / R; // Angular distance in radians
-
-      // Calculate destination coordinates
-      const sinφ1 = Math.sin(φ1);
-      const cosφ1 = Math.cos(φ1);
-      const sinδ = Math.sin(δ);
-      const cosδ = Math.cos(δ);
-      const sinθ = Math.sin(θ);
-      const cosθ = Math.cos(θ);
-
-      const sinφ2 = sinφ1 * cosδ + cosφ1 * sinδ * cosθ;
-      const φ2 = Math.asin(sinφ2);
-
-      const y = sinθ * sinδ * cosφ1;
-      const x = cosδ - sinφ1 * sinφ2;
-      const λ2 = λ1 + Math.atan2(y, x);
-
-      // Convert radians back to degrees
-      const lat2 = (φ2 * 180) / Math.PI;
-      const lon2 = ((λ2 * 180) / Math.PI + 540) % 360 - 180; // Normalize to [-180, +180]
-
-      return { latitude: lat2, longitude: lon2 };
-    }
-
-    /**
-     * Returns the length of the vector (x, y) from the origin.
-     * @param {number} x – x-coordinate
-     * @param {number} y – y-coordinate
-     * @returns {number} distance from (0,0) to (x,y)
-     */
-    function calculateVectorDistance(x, y) {
-      return Math.sqrt(x * x + y * y);
-    }
-
-    function normalizeAngle(angle) {
-      return ((angle % 360) + 360) % 360;
-    }
-
-    /**
-     * Estimate current tide height with sinusoidal easing
-     *
-     * @param {Date|string|number} lowTime      — time of low tide
-     * @param {number}            lowHeight    — height at low tide
-     * @param {Date|string|number} highTime     — time of high tide
-     * @param {number}            highHeight   — height at high tide
-     * @param {Date|string|number} [currentTime=new Date()] — time to estimate
-     * @returns {number} smoothly interpolated tide height
-     */
-    function estimateTideHeightSmooth(lowTime, lowHeight, highTime, highHeight, currentTime = new Date()) {
-      // normalize inputs to UTC timestamps
-      const tLow = (lowTime instanceof Date ? lowTime : new Date(lowTime)).getTime();
-      const tHigh = (highTime instanceof Date ? highTime : new Date(highTime)).getTime();
-      const tCurrent = (currentTime instanceof Date ? currentTime : new Date(currentTime)).getTime();
-
-      let t0, h0, t1, h1;
-
-      // console.log('time low: ' + new Date(tLow));
-      // console.log('time high: ' + new Date(tHigh));
-      // console.log('time current: ' + new Date(tCurrent));
-      // console.log(`low height: ${lowHeight}`);
-      // console.log(`high height: ${highHeight}`);
-
-      // determine rising vs falling tide
-      if (tLow < tHigh) {
-        // rising: low → high
-        if (tCurrent <= tLow) return lowHeight;
-        if (tCurrent >= tHigh) return highHeight;
-        t0 = tLow; h0 = lowHeight;
-        t1 = tHigh; h1 = highHeight;
-      } else {
-        // falling: high → low
-        if (tCurrent <= tHigh) return highHeight;
-        if (tCurrent >= tLow) return lowHeight;
-        t0 = tHigh; h0 = highHeight;
-        t1 = tLow; h1 = lowHeight;
+        updateAnchorAreaPolygon();
+        updateAnchorLine();
       }
 
-      // fraction through the tide interval [0…1]
-      const frac = (tCurrent - t0) / (t1 - t0);
+      function updateDepthUI(dbs, dbk) {
+        let output;
 
-      // sinusoidal easing: starts slow, speeds up, then slows into the end
-      const sineFrac = (1 - Math.cos(Math.PI * frac)) / 2;
+        if (typeof dbs !== "undefined") dbs = Math.round(dbs * 10) / 10;
+        else dbs = "~";
 
-      // interpolated height
-      const result = h0 + (h1 - h0) * sineFrac;
+        if (typeof dbk !== "undefined") dbk = Math.round(dbk * 10) / 10;
+        else dbk = "~";
 
-      // console.log(`currentHeight: ${result}`);
+        $("#belowSurface").html(`${dbs}m`);
+        $("#belowKeel").html(`${dbk}m`);
+      }
 
-      return result;
-    }
-  </script>
-</body>
+      function updateScopeUI(dbs) {
+        dbs = parseFloat(dbs);
 
+        let scope;
+
+        let maxHeight = dbs;
+
+        //the height of our bow roller.
+        maxHeight += _boatAnchorRollerHeight;
+
+        //the delta between now and high tide.
+        maxHeight += _tideDelta;
+
+        scope = calculateScope(7, dbs);
+        scope = scope.toFixed(1);
+        $("#scope7to1").html(`${scope}m`);
+
+        scope = calculateScope(5, dbs);
+        scope = scope.toFixed(1);
+        $("#scope5to1").html(`${scope}m`);
+
+        scope = calculateScope(4, dbs);
+        scope = scope.toFixed(1);
+        $("#scope4to1").html(`${scope}m`);
+
+        scope = calculateScope(3, dbs);
+        scope = scope.toFixed(1);
+        $("#scope3to1").html(`${scope}m`);
+
+        let dbsDisplay = dbs.toFixed(1);
+        $("#scopeDepth").html(`${dbsDisplay}m`);
+
+        let bowHeightDisplay = _boatAnchorRollerHeight.toFixed(1);
+        $("#bowHeight").html(`${bowHeightDisplay}m`);
+
+        let tideDelta = _tideDelta.toFixed(1);
+        $("#tideDelta").html(`${tideDelta}m`);
+
+        maxHeight = maxHeight.toFixed(1);
+        $("#scopeTotal").html(`${maxHeight}m`);
+      }
+
+      function calculateScope(scope, dbs) {
+        //start with depth
+        let maxHeight = dbs;
+
+        //the height of our bow roller.
+        maxHeight += _boatAnchorRollerHeight;
+
+        //the delta between now and high tide.
+        maxHeight += _tideDelta;
+
+        //okay, send it back.
+        let total = maxHeight * scope;
+
+        return total;
+      }
+
+      function updateAnchorLine() {
+        let _bowCoordinates = calculateBowCoordinates(
+          _currentCoordinates,
+          _heading,
+          _gpsBowXDistance,
+          _gpsBowYDistance,
+        );
+
+        anchorLine.setLatLngs([_bowCoordinates, _anchorCoordinates]);
+        anchorLineAngle.setLatLngs([_bowCoordinates, _anchorCoordinates]); // this duplicate on is so we can have 2 text labels
+
+        //this will fail if you're anchored exactly on the equator, lol.
+        let flip = false;
+        if (_bowCoordinates.lng > _anchorCoordinates.lng) flip = true;
+
+        let distance = calculateDistance(
+          _bowCoordinates.lat,
+          _bowCoordinates.lng,
+          _anchorCoordinates.lat,
+          _anchorCoordinates.lng,
+        );
+        distance = Math.round(distance * 10) / 10;
+
+        anchorLine.setText("");
+        anchorLine.setText(`${distance}m`, {
+          orientation: flip ? "flip" : 0,
+          offset: 12,
+          center: true,
+          attributes: {
+            class: "anchorLineLabel",
+          },
+        });
+
+        const bearing = Math.round(
+          calculateBearing(
+            _bowCoordinates.lat,
+            _bowCoordinates.lng,
+            _anchorCoordinates.lat,
+            _anchorCoordinates.lng,
+          ),
+        );
+
+        anchorLineAngle.setText("");
+        anchorLineAngle.setText(`${bearing}°`, {
+          orientation: flip ? "flip" : 0,
+          offset: -3,
+          center: true,
+          attributes: {
+            class: "anchorLineLabel",
+          },
+        });
+      }
+
+      function updateWindChevronMarker() {
+        if (!myBoatMarker || !windChevronMarker) return;
+
+        if (_twd == null) {
+          map.removeLayer(windChevronMarker);
+          return;
+        } else if (!map.hasLayer(windChevronMarker)) {
+          map.addLayer(windChevronMarker);
+        }
+
+        // get center of our boat
+        const center = calculateBowCoordinates(
+          myBoatMarker.getLatLng(),
+          _heading,
+          _gpsBowXDistance,
+          _gpsBowYDistance - _boatLOA / 2,
+        );
+
+        windChevronMarker.setLatLng(center);
+
+        // rotate through the shortest path - e.g. when shifting from 350deg to 10deg
+        let newAngle = normalizeAngle(_twd);
+        let oldAngle = normalizeAngle(currentWindChevronAngle);
+        let delta = newAngle - oldAngle;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        currentWindChevronAngle += delta;
+
+        const chevron = windChevronMarker
+          .getElement()
+          .querySelector(".wind-chevron");
+        chevron.style.transform = `rotate(${currentWindChevronAngle}deg) `;
+      }
+
+      function getShipTypeIcon(aisShipType, aspectRatio) {
+        let icon = "icons/ships/png/default.png";
+
+        aisShipType = parseInt(aisShipType);
+
+        // console.log(aisShipType);
+        // console.log(aspectRatio);
+
+        switch (aisShipType) {
+          case 20: // Wing in ground (WIG), all ships of this type
+          case 21: // Wing in ground (WIG), Hazardous category A
+          case 22: // Wing in ground (WIG), Hazardous category B
+          case 23: // Wing in ground (WIG), Hazardous category C
+          case 24: // Wing in ground (WIG), Hazardous category D
+          case 25: // Wing in ground (WIG), Reserved for future use
+          case 26: // Wing in ground (WIG), Reserved for future use
+          case 27: // Wing in ground (WIG), Reserved for future use
+          case 28: // Wing in ground (WIG), Reserved for future use
+          case 29: // Wing in ground (WIG), Reserved for future use
+            icon = "icons/ships/png/wing-in-ground.png";
+            break;
+
+          case 30: // Fishing
+            icon = "icons/ships/png/fishing.png";
+            break;
+
+          case 31: // Towing
+          case 32: // Towing: length exceeds 200m or breadth exceeds 25m
+            icon = "icons/ships/png/towing.png";
+            break;
+
+          case 33: // Dredging or underwater ops
+            icon = "icons/ships/png/dredging.png";
+            break;
+
+          case 34: // Diving ops
+            icon = "icons/ships/png/diving.png";
+            break;
+
+          case 35: // Military ops
+            icon = "icons/ships/png/military.png";
+            break;
+
+          case 36: // Sailing
+            if (aspectRatio >= 2.5) icon = "icons/ships/png/sailboat.png";
+            else icon = "icons/ships/png/catamaran.png";
+            break;
+
+          case 37: // Pleasure Craft
+            icon = "icons/ships/png/pleasure.png";
+            break;
+
+          case 40: // High speed craft (HSC), all ships of this type
+          case 41: // High speed craft (HSC), Hazardous category A
+          case 42: // High speed craft (HSC), Hazardous category B
+          case 43: // High speed craft (HSC), Hazardous category C
+          case 44: // High speed craft (HSC), Hazardous category D
+          case 45: // High speed craft (HSC), Reserved for future use
+          case 46: // High speed craft (HSC), Reserved for future use
+          case 47: // High speed craft (HSC), Reserved for future use
+          case 48: // High speed craft (HSC), Reserved for future use
+          case 49: // High speed craft (HSC), No additional information
+            icon = "icons/ships/png/high-speed-craft.png";
+            break;
+
+          case 50: // Pilot Vessel
+            icon = "icons/ships/png/pilot.png";
+            break;
+
+          case 51: // Search and Rescue vessel
+            icon = "icons/ships/png/sar.png";
+            break;
+
+          case 52: // Tug
+            icon = "icons/ships/png/tug.png";
+            break;
+
+          case 53: // Port Tender
+            icon = "icons/ships/png/port-tender.png";
+            break;
+
+          case 54: // Anti-pollution equipment
+            icon = "icons/ships/png/anti-pollution.png";
+            break;
+
+          case 55: // Law Enforcement
+            icon = "icons/ships/png/police.png";
+            break;
+
+          case 58: // Medical Transport
+            icon = "icons/ships/png/medical.png";
+            break;
+
+          case 59: // Noncombatant ship according to RR Resolution No. 18
+            icon = "icons/ships/png/noncombatant.png";
+            break;
+
+          case 60: // Passenger, all ships of this type
+          case 61: // Passenger, Hazardous category A
+          case 62: // Passenger, Hazardous category B
+          case 63: // Passenger, Hazardous category C
+          case 64: // Passenger, Hazardous category D
+          case 65: // Passenger, Reserved for future use
+          case 66: // Passenger, Reserved for future use
+          case 67: // Passenger, Reserved for future use
+          case 68: // Passenger, Reserved for future use
+          case 69: // Passenger, No additional information
+            icon = "icons/ships/png/passenger.png";
+            break;
+
+          case 70: // Cargo, all ships of this type
+          case 71: // Cargo, Hazardous category A
+          case 72: // Cargo, Hazardous category B
+          case 73: // Cargo, Hazardous category C
+          case 74: // Cargo, Hazardous category D
+          case 75: // Cargo, Reserved for future use
+          case 76: // Cargo, Reserved for future use
+          case 77: // Cargo, Reserved for future use
+          case 78: // Cargo, Reserved for future use
+          case 79: // Cargo, No additional information
+            icon = "icons/ships/png/cargo.png";
+            break;
+
+          case 80: // Tanker, all ships of this type
+          case 81: // Tanker, Hazardous category A
+          case 82: // Tanker, Hazardous category B
+          case 83: // Tanker, Hazardous category C
+          case 84: // Tanker, Hazardous category D
+          case 85: // Tanker, Reserved for future use
+          case 86: // Tanker, Reserved for future use
+          case 87: // Tanker, Reserved for future use
+          case 88: // Tanker, Reserved for future use
+          case 89: // Tanker, No additional information
+            icon = "icons/ships/png/tanker.png";
+            break;
+
+          case 90: // Other Type, all ships of this type
+          case 91: // Other Type, Hazardous category A
+          case 92: // Other Type, Hazardous category B
+          case 93: // Other Type, Hazardous category C
+          case 94: // Other Type, Hazardous category D
+          case 95: // Other Type, Reserved for future use
+          case 96: // Other Type, Reserved for future use
+          case 97: // Other Type, Reserved for future use
+          case 98: // Other Type, Reserved for future use
+          case 99: // Other Type, no additional information
+            icon = "icons/ships/png/other.png";
+            break;
+
+          // 0 	Not available (default)
+          // 1-19 	Reserved for future use
+          // 38 	Reserved
+          // 39 	Reserved
+          // 56 	Spare - Local Vessel
+          // 57 	Spare - Local Vessel
+          default:
+            break;
+        }
+
+        return icon;
+      }
+
+      function calculateBowCoordinates(gpsPosition, heading, xOffset, yOffset) {
+        var distance = Math.sqrt(xOffset ** 2 + yOffset ** 2);
+        var bearing = heading - rad2deg(Math.atan(xOffset / yOffset));
+        var destination = turf.destination(
+          [gpsPosition.lng, gpsPosition.lat],
+          distance,
+          bearing,
+          { units: "meters" },
+        );
+        return L.latLng(turf.getCoord(turf.flip(destination)));
+      }
+
+      function calculateDistance(lat1, lon1, lat2, lon2) {
+        let R = 6371000; // Radius of the earth in m
+        let dLat = deg2rad(lat2 - lat1); // deg2rad below
+        let dLon = deg2rad(lon2 - lon1);
+        let a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(deg2rad(lat1)) *
+            Math.cos(deg2rad(lat2)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        let d = R * c; // Distance in km
+        return d;
+      }
+
+      function deg2rad(deg) {
+        return deg * (Math.PI / 180);
+      }
+
+      // Convert radians to degrees
+      function rad2deg(radians) {
+        return (radians * 180) / Math.PI;
+      }
+
+      function calculateBearing(lat1, lon1, lat2, lon2) {
+        // Convert latitude and longitude from degrees to radians
+        var θa = deg2rad(lat1);
+        var θb = deg2rad(lat2);
+        var ΔL = deg2rad(lon2 - lon1);
+
+        // Calculate X and Y using the provided formulas
+        var X = Math.cos(θb) * Math.sin(ΔL);
+        var Y =
+          Math.cos(θa) * Math.sin(θb) -
+          Math.sin(θa) * Math.cos(θb) * Math.cos(ΔL);
+
+        // Calculate the initial bearing (β) in radians
+        var β = Math.atan2(X, Y);
+
+        // Convert the bearing from radians to degrees
+        var bearing = rad2deg(β);
+
+        // Normalize the bearing to be between 0° and 360°
+        bearing = normalizeAngle(bearing);
+
+        return bearing;
+      }
+
+      /**
+       * Calculates the destination point given starting latitude and longitude,
+       * bearing, and distance using the haversine formula.
+       *
+       * @param {number} lat1 - Starting latitude in degrees.
+       * @param {number} lon1 - Starting longitude in degrees.
+       * @param {number} bearing - Bearing in degrees (clockwise from north).
+       * @param {number} distance - Distance to travel from the starting point in meters.
+       * @returns {{ latitude: number, longitude: number }} - The destination latitude and longitude.
+       */
+      function calculateDestinationPoint(lat1, lon1, bearing, distance) {
+        //console.log(`lat: ${lat1}, lon: ${lon1}, bearing: ${bearing}, distance: ${distance}`);
+        const R = 6371e3; // Earth's radius in meters
+
+        // Convert input values to radians
+        const φ1 = (lat1 * Math.PI) / 180;
+        const λ1 = (lon1 * Math.PI) / 180;
+        const θ = (bearing * Math.PI) / 180;
+        const δ = distance / R; // Angular distance in radians
+
+        // Calculate destination coordinates
+        const sinφ1 = Math.sin(φ1);
+        const cosφ1 = Math.cos(φ1);
+        const sinδ = Math.sin(δ);
+        const cosδ = Math.cos(δ);
+        const sinθ = Math.sin(θ);
+        const cosθ = Math.cos(θ);
+
+        const sinφ2 = sinφ1 * cosδ + cosφ1 * sinδ * cosθ;
+        const φ2 = Math.asin(sinφ2);
+
+        const y = sinθ * sinδ * cosφ1;
+        const x = cosδ - sinφ1 * sinφ2;
+        const λ2 = λ1 + Math.atan2(y, x);
+
+        // Convert radians back to degrees
+        const lat2 = (φ2 * 180) / Math.PI;
+        const lon2 = (((λ2 * 180) / Math.PI + 540) % 360) - 180; // Normalize to [-180, +180]
+
+        return { latitude: lat2, longitude: lon2 };
+      }
+
+      /**
+       * Returns the length of the vector (x, y) from the origin.
+       * @param {number} x – x-coordinate
+       * @param {number} y – y-coordinate
+       * @returns {number} distance from (0,0) to (x,y)
+       */
+      function calculateVectorDistance(x, y) {
+        return Math.sqrt(x * x + y * y);
+      }
+
+      function normalizeAngle(angle) {
+        return ((angle % 360) + 360) % 360;
+      }
+
+      /**
+       * Estimate current tide height with sinusoidal easing
+       *
+       * @param {Date|string|number} lowTime      — time of low tide
+       * @param {number}            lowHeight    — height at low tide
+       * @param {Date|string|number} highTime     — time of high tide
+       * @param {number}            highHeight   — height at high tide
+       * @param {Date|string|number} [currentTime=new Date()] — time to estimate
+       * @returns {number} smoothly interpolated tide height
+       */
+      function estimateTideHeightSmooth(
+        lowTime,
+        lowHeight,
+        highTime,
+        highHeight,
+        currentTime = new Date(),
+      ) {
+        // normalize inputs to UTC timestamps
+        const tLow = (
+          lowTime instanceof Date ? lowTime : new Date(lowTime)
+        ).getTime();
+        const tHigh = (
+          highTime instanceof Date ? highTime : new Date(highTime)
+        ).getTime();
+        const tCurrent = (
+          currentTime instanceof Date ? currentTime : new Date(currentTime)
+        ).getTime();
+
+        let t0, h0, t1, h1;
+
+        // console.log('time low: ' + new Date(tLow));
+        // console.log('time high: ' + new Date(tHigh));
+        // console.log('time current: ' + new Date(tCurrent));
+        // console.log(`low height: ${lowHeight}`);
+        // console.log(`high height: ${highHeight}`);
+
+        // determine rising vs falling tide
+        if (tLow < tHigh) {
+          // rising: low → high
+          if (tCurrent <= tLow) return lowHeight;
+          if (tCurrent >= tHigh) return highHeight;
+          t0 = tLow;
+          h0 = lowHeight;
+          t1 = tHigh;
+          h1 = highHeight;
+        } else {
+          // falling: high → low
+          if (tCurrent <= tHigh) return highHeight;
+          if (tCurrent >= tLow) return lowHeight;
+          t0 = tHigh;
+          h0 = highHeight;
+          t1 = tLow;
+          h1 = lowHeight;
+        }
+
+        // fraction through the tide interval [0…1]
+        const frac = (tCurrent - t0) / (t1 - t0);
+
+        // sinusoidal easing: starts slow, speeds up, then slows into the end
+        const sineFrac = (1 - Math.cos(Math.PI * frac)) / 2;
+
+        // interpolated height
+        const result = h0 + (h1 - h0) * sineFrac;
+
+        // console.log(`currentHeight: ${result}`);
+
+        return result;
+      }
+    </script>
+  </body>
 </html>
